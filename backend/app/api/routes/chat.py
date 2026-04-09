@@ -68,7 +68,9 @@ def chat(chat_id: str, data: MessageCreate, db: Session = Depends(get_db)):
 
     # 🔹 Get chat history (for better responses)
     messages = get_messages(db, chat_id)
-    history = [m.content for m in messages]
+    history = [
+    f"{m['role']}: {m['content']}"
+    for m in messages]
 
     try:
         # 🔹 Generate AI response using RAG

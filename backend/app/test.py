@@ -1,19 +1,7 @@
-from services.embedding_service import get_embeddings
-from db.faiss_manager import save_embeddings, search
+import google.generativeai as genai
+import os
 
-texts = [
-    "FastAPI is great",
-    "Python is easy",
-    "AI is future"
-]
+genai.configure(api_key="AIzaSyDyRTS2NZj4wKR6owkVH4g4MsMJRgdMXxQ")
 
-emb = get_embeddings(texts)
-
-save_embeddings(1, emb, texts)
-
-query = "What is good for backend?"
-q_emb = get_embeddings([query])[0]
-
-results = search(1, q_emb)
-
-print(results)
+for model in genai.list_models():
+    print(model.name, model.supported_generation_methods)

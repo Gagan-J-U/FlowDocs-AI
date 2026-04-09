@@ -1,41 +1,91 @@
+import fitz  # PyMuPDF
+import re
+import os
+
 from app.services.embedding_service import get_embeddings
 from app.db.faiss_manager import add_embeddings
-from app.services.document_service import extract_text_with_pages
 
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 100
+
+# ==============================
+# CONFIG
+# ==============================
+
+CHUNK_SIZE = 300
+CHUNK_OVERLAP = 50
+
+
+# ==============================
+# EXTRACT TEXT PAGE-WISE
+# ==============================
 
 def extract_text_with_pages(file_path: str):
     doc = fitz.open(file_path)
     pages = []
 
     for i, page in enumerate(doc):
+        text = page.get_text()
+
+        if not text or not text.strip():
+            continue
+
         pages.append({
             "page": i,
-            "text": page.get_text()
+            "text": text
         })
 
     return pages
 
-def chunk_text(text):
-    chunks = []
-    start = 0
 
-    while start < len(text):
-        end = start + CHUNK_SIZE
-        chunk = text[start:end]
-        chunks.append(chunk)
-        start += CHUNK_SIZE - CHUNK_OVERLAP
+# ==============================
+# SEMANTIC CHUNKING
+# ==============================
+
+def chunk_text(text: str, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    sentences = re.split(r'(?<=[.!?]) +', text)
+
+    chunks = []
+    current_chunk = []
+    current_length = 0
+
+    for sentence in sentences:
+        words = sentence.split()
+
+        if current_length + len(words) > chunk_size:
+            if current_chunk:
+                chunks.append(" ".join(current_chunk))
+
+            # overlap
+            current_chunk = current_chunk[-overlap:] if overlap else []
+            current_length = len(current_chunk)
+
+        current_chunk.extend(words)
+        current_length += len(words)
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
 
     return chunks
 
 
+# ==============================
+# MAIN PIPELINE
+# ==============================
+
 def process_document(subject_id: str, doc_id: str, file_path: str):
+    filename = os.path.basename(file_path)
+
+    print(f"📄 Processing document: {filename}")
+
     pages = extract_text_with_pages(file_path)
 
-    all_chunks = []
+    if not pages:
+        print("❌ No text extracted from document")
+        return
+
+    valid_chunks = []
     metadata = []
 
+    # 🔹 Build clean chunks + metadata
     for page_data in pages:
         page = page_data["page"]
         text = page_data["text"]
@@ -43,14 +93,44 @@ def process_document(subject_id: str, doc_id: str, file_path: str):
         chunks = chunk_text(text)
 
         for chunk in chunks:
-            all_chunks.append(chunk)
+            cleaned = chunk.strip()
+
+            # 🔴 Filter bad chunks BEFORE embedding
+            if not cleaned or len(cleaned) < 30:
+                continue
+
+            valid_chunks.append(cleaned)
+
             metadata.append({
                 "doc_id": doc_id,
-                "page": page,
-                "text": chunk
+                "document_name": filename,
+                "page": page + 1,
+                "text": cleaned
             })
 
-    embeddings = get_embeddings(all_chunks)
+    # 🔴 Safety check
+    if not valid_chunks:
+        print("❌ No valid chunks generated")
+        return
 
-    # 🔥 append to FAISS (we will fix this next)
+    print("Valid chunks:", len(valid_chunks))
+
+    # 🔹 Generate embeddings
+    embeddings = get_embeddings(valid_chunks)
+
+    print("Embeddings:", len(embeddings))
+    print("Metadata:", len(metadata))
+
+    # 🔴 FINAL SAFETY FIX (guarantee match)
+    min_len = min(len(metadata), embeddings.shape[0])
+
+    if len(metadata) != embeddings.shape[0]:
+        print("⚠️ Fixing mismatch automatically")
+
+    metadata = metadata[:min_len]
+    embeddings = embeddings[:min_len]
+
+    # 🔹 Store in FAISS
     add_embeddings(subject_id, embeddings, metadata)
+
+    print(f"✅ Successfully processed {min_len} chunks from {filename}")
