@@ -1,16 +1,79 @@
-# Virtual Environment
-venv/
-.env/
-
-# Python
+# =========================
+# 🐍 Python
+# =========================
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
 *.pyc
 
-# OS files
-.DS_Store
+# =========================
+# 📦 Virtual Environment
+# =========================
+venv/
+.env/
+.env
+*.env
 
-# Logs
+# =========================
+# 🔐 Secrets & API Keys
+# =========================
+.env.local
+.env.*.local
+
+# =========================
+# 🧠 ML / RAG / Embeddings
+# =========================
+*.faiss
+*.pkl
+*.bin
+*.h5
+*.pt
+
+# If you store embeddings or vector DB
+faiss_index/
+vector_store/
+chroma_db/
+
+# =========================
+# 📄 Uploaded Documents
+# =========================
+uploads/
+*.pdf
+
+# =========================
+# 🗄️ Database
+# =========================
+*.db
+*.sqlite3
+
+# =========================
+# 🧪 Testing / Coverage
+# =========================
+.coverage
+htmlcov/
+.pytest_cache/
+
+# =========================
+# ⚙️ Logs
+# =========================
 *.log
 
-# IDE
+# =========================
+# 🧰 IDE / Editor
+# =========================
 .vscode/
+.idea/
+
+# =========================
+# 🖥️ OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# 🚀 Build / Cache
+# =========================
+dist/
+build/
+*.egg-info/
