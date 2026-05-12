@@ -1,7 +1,7 @@
 from sqlalchemy import Column
+from sqlalchemy import String
 from sqlalchemy import Integer
 from sqlalchemy import Text
-from sqlalchemy import String
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 
@@ -10,6 +10,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from app.core.database import Base
+from app.core.id_generator import generate_uuid
 
 
 class Chunk(Base):
@@ -17,13 +18,14 @@ class Chunk(Base):
     __tablename__ = "chunks"
 
     id = Column(
-        Integer,
+        String,
         primary_key=True,
+        default=generate_uuid,
         index=True
     )
 
     document_id = Column(
-        Integer,
+        String,
         ForeignKey("documents.id"),
         nullable=False
     )
@@ -69,5 +71,6 @@ class Chunk(Base):
     )
 
     document = relationship(
-        "Document"
+        "Document",
+        back_populates="chunks"
     )
