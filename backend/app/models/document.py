@@ -1,5 +1,4 @@
 from sqlalchemy import Column
-from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
@@ -9,50 +8,37 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from app.core.database import Base
+from app.core.id_generator import generate_uuid
 
 
 class Document(Base):
+
     __tablename__ = "documents"
 
     id = Column(
-        Integer,
+        String,
         primary_key=True,
+        default=generate_uuid,
         index=True
     )
 
-    # Original filename uploaded by user
     filename = Column(
         String,
         nullable=False
     )
 
-    # Internal unique filename used for storage
     stored_filename = Column(
         String,
-        nullable=False,
-        unique=True
+        nullable=False
     )
 
-    # Physical file location on disk
     file_path = Column(
         String,
         nullable=False
     )
 
-    # MIME type (example: application/pdf)
-    mime_type = Column(
-        String,
-        nullable=True
-    )
-
-    # File size in bytes
-    file_size = Column(
-        Integer,
-        nullable=True
-    )
-
     subject_id = Column(
-        Integer,
+        String,
         ForeignKey("subjects.id"),
         nullable=False
     )
@@ -63,5 +49,12 @@ class Document(Base):
     )
 
     subject = relationship(
-        "Subject"
+        "Subject",
+        back_populates="documents"
+    )
+
+    chunks = relationship(
+        "Chunk",
+        back_populates="document",
+        cascade="all, delete"
     )
