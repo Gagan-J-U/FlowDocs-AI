@@ -78,3 +78,11 @@ pytest==8.3.5
 # =========================
 black==25.1.0
 isort==6.0.1
+
+# =========================
+# AUTH
+# =========================
+bcrypt==4.0.1
+python_jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+email-validator==2.3.0
