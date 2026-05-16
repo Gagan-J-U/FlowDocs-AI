@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.core.database import Base
 from app.core.id_generator import generate_uuid
+from sqlalchemy import ForeignKey
 
 
 class Workspace(Base):
@@ -35,4 +36,15 @@ class Workspace(Base):
         "Subject",
         back_populates="workspace",
         cascade="all, delete"
+    )
+
+    user_id = Column(
+        String,
+        ForeignKey("users.id"),
+        nullable=False
+    )
+
+    user = relationship(
+        "User",
+        back_populates="workspaces"
     )
