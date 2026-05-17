@@ -3,13 +3,13 @@ from datetime import datetime
 
 
 class DocumentResponse(BaseModel):
-    id: int
+    id: str
     filename: str
     stored_filename: str
     file_path: str
     mime_type: str | None
     file_size: int | None
-    subject_id: int
+    subject_id: str
     uploaded_at: datetime
 
     class Config:

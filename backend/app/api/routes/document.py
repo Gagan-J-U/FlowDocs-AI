@@ -32,7 +32,7 @@ UPLOAD_DIR = "uploads"
     response_model=DocumentResponse
 )
 def upload_document(
-    subject_id: int,
+    subject_id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):

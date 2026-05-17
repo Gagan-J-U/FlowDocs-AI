@@ -5,10 +5,10 @@ class WorkspaceCreate(BaseModel):
   name:str
 
 class WorkspaceResponse(BaseModel):
-  id:int 
-  name:str 
-  created_at:datetime 
+  id: str
+  name: str
+  created_at: datetime
 
   class Config:
-    from_attributes=True
+    from_attributes = True
     
