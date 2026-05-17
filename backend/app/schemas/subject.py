@@ -2,15 +2,16 @@ from pydantic import BaseModel
 from datetime import datetime
 
 class SubjectCreate(BaseModel):
-  name:str 
-  workspace_id:int 
+    name: str
+    workspace_id: str
+
 
 class SubjectResponse(BaseModel):
-  id:int 
-  name:str 
-  workspace_id:int 
-  created_at:datetime
+    id: str
+    name: str
+    workspace_id: str
+    created_at: datetime
 
-  class config:
-    from_attributes=True
+    class Config:
+        from_attributes = True
     
