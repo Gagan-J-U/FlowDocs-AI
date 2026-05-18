@@ -5,7 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db 
 
+from app.api.dependencies.auth import get_current_user
+
 from app.models.workspace import Workspace
+from app.models.user import User
 
 from app.schemas.workspace import (
   WorkspaceCreate,
@@ -20,9 +23,13 @@ router=APIRouter(
 @router.post("/",response_model=WorkspaceResponse)
 def create_workspace(
   workspace:WorkspaceCreate,
-  db:Session=Depends(get_db)
+  db:Session=Depends(get_db),
+  current_user: User = Depends(get_current_user)
   ):
-    new_workspace=Workspace(name=workspace.name)
+    new_workspace=Workspace(
+        name=workspace.name,
+        user_id=current_user.id
+    )
     db.add(new_workspace)
     db.commit()
     db.refresh(new_workspace)
@@ -31,6 +38,9 @@ def create_workspace(
 
 @router.get("/", response_model=list[WorkspaceResponse])
 def get_workspaces(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return db.query(Workspace).all()
+    return db.query(Workspace).filter(
+        Workspace.user_id == current_user.id
+    ).all()

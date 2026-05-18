@@ -1,8 +1,8 @@
-"""initial auth schema
+"""initial clean schema
 
-Revision ID: 25586723bd55
+Revision ID: e66259cf02fd
 Revises: 
-Create Date: 2026-05-16 13:21:28.169941
+Create Date: 2026-05-18 18:46:41.497138
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '25586723bd55'
+revision: str = 'e66259cf02fd'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -56,6 +56,8 @@ def upgrade() -> None:
     sa.Column('filename', sa.String(), nullable=False),
     sa.Column('stored_filename', sa.String(), nullable=False),
     sa.Column('file_path', sa.String(), nullable=False),
+    sa.Column('mime_type', sa.String(), nullable=True),
+    sa.Column('file_size', sa.Integer(), nullable=True),
     sa.Column('subject_id', sa.String(), nullable=False),
     sa.Column('uploaded_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['subject_id'], ['subjects.id'], ),
