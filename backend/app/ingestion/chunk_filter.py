@@ -138,14 +138,4 @@ def filter_chunks(chunks):
 
         filtered_chunks.append(chunk)
 
-    print(
-        f"\nFiltered "
-        f"{removed_count} noisy chunks"
-    )
-
-    print(
-        f"Remaining chunks: "
-        f"{len(filtered_chunks)}"
-    )
-
     return filtered_chunks

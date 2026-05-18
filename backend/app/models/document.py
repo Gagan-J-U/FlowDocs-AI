@@ -2,6 +2,7 @@ from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
 
 from sqlalchemy.orm import relationship
 
@@ -35,6 +36,16 @@ class Document(Base):
     file_path = Column(
         String,
         nullable=False
+    )
+
+    mime_type = Column(
+        String,
+        nullable=True
+    )
+
+    file_size = Column(
+        Integer,
+        nullable=True
     )
 
     subject_id = Column(
