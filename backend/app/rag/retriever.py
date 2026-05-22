@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+from time import perf_counter
+import os
 
 from app.models.chunk import Chunk
 
@@ -10,37 +12,48 @@ from app.vectorstore.faiss_service import (
     search_index
 )
 
+from app.rag.bm25_cache import (
+    bm25_cache
+)
 
-# ==========================================
-# RETRIEVE RELEVANT CHUNKS
-# ==========================================
 
 def retrieve_chunks(
-
-    query: str,
-
-    workspace_id: str,
-
-    subject_id: str,
-
     db: Session,
-
-    top_k: int = 5
+    workspace_id: str,
+    subject_id: str,
+    query: str,
+    top_k: int = 5,
+    use_reranker: bool = True,
+    dense_top_k: int = 10,
+    sparse_top_k: int = 10,
+    rerank_top_n: int = 10
 ):
 
-    # ======================================
-    # GENERATE QUERY EMBEDDING
-    # ======================================
+    timings_enabled = (
+        os.getenv("RAG_TIMING", "0") == "1"
+    )
+
+    timings = {}
+
+    stage_start = perf_counter()
+
+    # ==========================================
+    # Generate Query Embedding
+    # ==========================================
 
     query_embedding = generate_embedding(
         query
     )
 
-    # ======================================
-    # SEARCH FAISS
-    # ======================================
+    timings["embedding"] = perf_counter() - stage_start
 
-    search_results = search_index(
+    # ==========================================
+    # Dense Retrieval (FAISS)
+    # ==========================================
+
+    stage_start = perf_counter()
+
+    dense_results = search_index(
 
         workspace_id=workspace_id,
 
@@ -48,35 +61,173 @@ def retrieve_chunks(
 
         query_embedding=query_embedding,
 
-        top_k=top_k
+        top_k=dense_top_k
     )
 
-    retrieved_chunks = []
+    timings["faiss"] = perf_counter() - stage_start
 
-    # ======================================
-    # FETCH CHUNKS FROM POSTGRES
-    # ======================================
+    if not dense_results:
 
-    for result in search_results:
+        return []
 
-        chunk_id = result["chunk_id"]
+    # ==========================================
+    # Dense Chunk IDs + Scores
+    # ==========================================
 
-        similarity_score = result["score"]
+    dense_chunk_ids = [
 
-        chunk = db.query(Chunk).filter(
-            Chunk.id == chunk_id
-        ).first()
+        result["chunk_id"]
+
+        for result in dense_results
+    ]
+
+    dense_score_map = {
+
+        result["chunk_id"]: result["score"]
+
+        for result in dense_results
+    }
+
+    dense_rank_map = {
+        result["chunk_id"]: rank
+        for rank, result in enumerate(dense_results, start=1)
+    }
+
+    # ==========================================
+    # Sparse Retrieval (BM25)
+    # ==========================================
+
+    stage_start = perf_counter()
+
+    bm25_index = bm25_cache.get_index(
+
+        workspace_id=workspace_id,
+
+        subject_id=subject_id
+    )
+
+    sparse_results = bm25_index.search(
+
+        query=query,
+
+        top_k=sparse_top_k
+    )
+
+    timings["bm25"] = perf_counter() - stage_start
+
+    # ==========================================
+    # Sparse Chunk IDs + Scores
+    # ==========================================
+
+    sparse_chunk_ids = [
+
+        result["chunk_id"]
+
+        for result in sparse_results
+    ]
+
+    bm25_score_map = {
+
+        result["chunk_id"]: result["bm25_score"]
+
+        for result in sparse_results
+    }
+
+    sparse_rank_map = {
+        result["chunk_id"]: rank
+        for rank, result in enumerate(sparse_results, start=1)
+    }
+
+    # ==========================================
+    # Merge Chunk IDs
+    # ==========================================
+
+    merged_chunk_ids = list(dict.fromkeys(
+        dense_chunk_ids + sparse_chunk_ids
+    ))
+
+    # ==========================================
+    # Bulk Load ALL Chunks
+    # ==========================================
+
+    stage_start = perf_counter()
+
+    chunks = (
+
+        db.query(Chunk)
+
+        .filter(
+            Chunk.id.in_(merged_chunk_ids)
+        )
+
+        .all()
+    )
+
+    timings["db"] = perf_counter() - stage_start
+
+    # ==========================================
+    # Chunk Lookup Map
+    # ==========================================
+
+    chunk_map = {
+
+        chunk.id: chunk
+
+        for chunk in chunks
+    }
+
+    # ==========================================
+    # Build Hybrid Payloads
+    # ==========================================
+
+    stage_start = perf_counter()
+
+    hybrid_results = []
+
+    for chunk_id in merged_chunk_ids:
+
+        chunk = chunk_map.get(chunk_id)
 
         if not chunk:
             continue
 
-        retrieved_chunks.append({
+        similarity_score = float(
+            dense_score_map.get(
+                chunk_id,
+                0.0
+            )
+        )
 
-            "score": similarity_score,
+        bm25_score = float(
+            bm25_score_map.get(
+                chunk_id,
+                0.0
+            )
+        )
+
+        hybrid_score = (
+            1.0 / (60 + dense_rank_map[chunk_id])
+            if chunk_id in dense_rank_map
+            else 0.0
+        ) + (
+            1.0 / (60 + sparse_rank_map[chunk_id])
+            if chunk_id in sparse_rank_map
+            else 0.0
+        )
+
+        hybrid_results.append({
 
             "chunk_id": chunk.id,
 
             "text": chunk.text,
+
+            "similarity_score": similarity_score,
+
+            "bm25_score": bm25_score,
+
+            "hybrid_score": hybrid_score,
+
+            "document_id": chunk.document_id,
 
             "section_title": chunk.section_title,
 
@@ -86,9 +237,39 @@ def retrieve_chunks(
 
             "start_page": chunk.start_page,
 
-            "end_page": chunk.end_page,
-
-            "document_id": chunk.document_id
+            "end_page": chunk.end_page
         })
 
-    return retrieved_chunks
+    hybrid_results.sort(
+        key=lambda result: result["hybrid_score"],
+        reverse=True
+    )
+
+    timings["merge"] = perf_counter() - stage_start
+
+    if not use_reranker:
+
+        if timings_enabled:
+
+            print(f"RAG timings: {timings}")
+
+        return hybrid_results[:top_k]
+
+    # Import lazily because loading the cross-encoder is expensive.
+    stage_start = perf_counter()
+
+    from app.rag.reranker import reranker
+
+    reranked_chunks = reranker.rerank(
+        query=query,
+        chunks=hybrid_results[:rerank_top_n],
+        top_k=top_k
+    )
+
+    timings["rerank"] = perf_counter() - stage_start
+
+    if timings_enabled:
+
+        print(f"RAG timings1: {timings}")
+
+    return reranked_chunks

@@ -28,6 +28,9 @@ from app.vectorstore.faiss_service import (
     add_embeddings
 )
 
+from app.rag.bm25_cache import (
+    bm25_cache
+)
 
 # ==========================================
 # INGEST DOCUMENT
@@ -162,6 +165,21 @@ def ingest_document(
         embeddings=embeddings,
 
         chunk_ids=chunk_ids
+    )
+
+    save_bm25_corpus(
+
+    workspace_id=workspace_id,
+
+    subject_id=subject_id,
+
+    chunks=stored_chunks
+    )
+    bm25_cache.invalidate(
+
+    workspace_id=workspace_id,
+
+    subject_id=subject_id
     )
 
     print("FAISS index updated.")

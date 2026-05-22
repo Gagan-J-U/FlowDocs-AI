@@ -7,6 +7,8 @@ import numpy as np
 
 VECTOR_STORAGE_DIR = "vector_storage"
 
+_index_cache = {}
+
 
 # ==========================================
 # GET SUBJECT STORAGE PATH
@@ -53,6 +55,15 @@ def load_index_and_ids(
     subject_id: str
 ):
 
+    cache_key = (
+        str(workspace_id),
+        str(subject_id)
+    )
+
+    if cache_key in _index_cache:
+
+        return _index_cache[cache_key]
+
     subject_dir = get_subject_directory(
 
         workspace_id,
@@ -83,6 +94,11 @@ def load_index_and_ids(
     with open(ids_path, "rb") as file:
 
         chunk_ids = pickle.load(file)
+
+    _index_cache[cache_key] = (
+        index,
+        chunk_ids
+    )
 
     return index, chunk_ids
 
@@ -140,6 +156,117 @@ def save_index_and_ids(
             chunk_ids,
             file
         )
+
+    _index_cache[
+        (
+            str(workspace_id),
+            str(subject_id)
+        )
+    ] = (
+        index,
+        chunk_ids
+    )
+
+
+# ==========================================
+# SAVE BM25 CORPUS
+# ==========================================
+
+def save_bm25_corpus(
+
+    workspace_id: str,
+
+    subject_id: str,
+
+    chunks: list
+):
+
+    subject_dir = get_subject_directory(
+
+        workspace_id,
+        subject_id
+    )
+
+    os.makedirs(
+        subject_dir,
+        exist_ok=True
+    )
+
+    corpus_path = os.path.join(
+        subject_dir,
+        "bm25_corpus.pkl"
+    )
+
+    index_path = os.path.join(
+        subject_dir,
+        "bm25_index.pkl"
+    )
+
+    corpus_by_id = {}
+
+    if os.path.exists(corpus_path):
+
+        with open(corpus_path, "rb") as file:
+
+            existing_corpus = pickle.load(file)
+
+        corpus_by_id = {
+            chunk["chunk_id"]: chunk
+            for chunk in existing_corpus
+        }
+
+    for chunk in chunks:
+
+        corpus_by_id[chunk["chunk_id"]] = {
+
+            "chunk_id": chunk["chunk_id"],
+
+            "text": chunk["text"]
+        }
+
+    with open(corpus_path, "wb") as file:
+
+        pickle.dump(
+            list(corpus_by_id.values()),
+            file
+        )
+
+    if os.path.exists(index_path):
+
+        os.remove(index_path)
+
+
+# ==========================================
+# LOAD BM25 CORPUS
+# ==========================================
+
+def load_bm25_corpus(
+
+    workspace_id: str,
+
+    subject_id: str
+):
+
+    subject_dir = get_subject_directory(
+
+        workspace_id,
+        subject_id
+    )
+
+    corpus_path = os.path.join(
+        subject_dir,
+        "bm25_corpus.pkl"
+    )
+
+    if not os.path.exists(corpus_path):
+
+        return []
+
+    with open(corpus_path, "rb") as file:
+
+        corpus = pickle.load(file)
+
+    return corpus
 
 
 # ==========================================
