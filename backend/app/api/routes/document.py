@@ -3,6 +3,7 @@ import uuid
 import shutil
 
 from fastapi import APIRouter
+from fastapi import BackgroundTasks
 from fastapi import UploadFile
 from fastapi import File
 from fastapi import Depends
@@ -22,7 +23,7 @@ from app.models.user import User
 from app.schemas.document import DocumentResponse
 
 from app.services.document_ingestion_service import (
-    ingest_document
+    ingest_document_by_id
 )
 
 
@@ -41,6 +42,7 @@ UPLOAD_DIR = "uploads"
 )
 def upload_document(
     subject_id: str,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -112,15 +114,15 @@ def upload_document(
 
     db.refresh(document)
 
-    ingest_document(
+    background_tasks.add_task(
 
-        document=document,
+        ingest_document_by_id,
+
+        document_id=document.id,
 
         workspace_id=subject.workspace_id,
 
-        subject_id=subject.id,
-
-        db=db
+        subject_id=subject.id
     )
 
     return document
