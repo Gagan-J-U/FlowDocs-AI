@@ -1,5 +1,13 @@
 from sqlalchemy.orm import Session
 
+from app.core.database import (
+    SessionLocal
+)
+
+from app.models.document import (
+    Document
+)
+
 from app.ingestion.pdf_extractor import (
     extract_pdf_content
 )
@@ -25,7 +33,8 @@ from app.embeddings.embedding_service import (
 )
 
 from app.vectorstore.faiss_service import (
-    add_embeddings
+    add_embeddings,
+    save_bm25_corpus
 )
 
 from app.rag.bm25_cache import (
@@ -167,19 +176,30 @@ def ingest_document(
         chunk_ids=chunk_ids
     )
 
+    bm25_chunks = [
+
+        {
+            "chunk_id": chunk.id,
+            "text": chunk.text
+        }
+
+        for chunk in stored_chunks
+    ]
+
     save_bm25_corpus(
 
-    workspace_id=workspace_id,
+        workspace_id=workspace_id,
 
-    subject_id=subject_id,
+        subject_id=subject_id,
 
-    chunks=stored_chunks
+        chunks=bm25_chunks
     )
+
     bm25_cache.invalidate(
 
-    workspace_id=workspace_id,
+        workspace_id=workspace_id,
 
-    subject_id=subject_id
+        subject_id=subject_id
     )
 
     print("FAISS index updated.")
@@ -192,3 +212,51 @@ def ingest_document(
 
         "chunks": len(stored_chunks)
     }
+
+
+def ingest_document_by_id(
+
+    document_id: str,
+
+    workspace_id: str,
+
+    subject_id: str
+):
+
+    db = SessionLocal()
+
+    try:
+
+        document = db.get(
+            Document,
+            document_id
+        )
+
+        if document is None:
+
+            print(
+                f"Document not found for ingestion: {document_id}"
+            )
+
+            return None
+
+        return ingest_document(
+
+            document=document,
+
+            workspace_id=workspace_id,
+
+            subject_id=subject_id,
+
+            db=db
+        )
+
+    except Exception:
+
+        db.rollback()
+
+        raise
+
+    finally:
+
+        db.close()

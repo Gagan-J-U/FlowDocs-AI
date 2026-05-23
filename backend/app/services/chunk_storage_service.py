@@ -49,18 +49,15 @@ def store_chunks(
             document_id=document_id
         )
 
-        db.add(db_chunk)
-
         stored_chunks.append(
             db_chunk
         )
 
-    # Commit once for efficiency
+    db.add_all(stored_chunks)
+
+    # Flush once so generated UUIDs are available without per-row refreshes.
+    db.flush()
+
     db.commit()
-
-    # Refresh to get generated UUIDs
-    for chunk in stored_chunks:
-
-        db.refresh(chunk)
 
     return stored_chunks

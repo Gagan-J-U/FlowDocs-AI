@@ -23,7 +23,7 @@ def retrieve_chunks(
     subject_id: str,
     query: str,
     top_k: int = 5,
-    use_reranker: bool = True,
+    use_reranker: bool = False,
     dense_top_k: int = 10,
     sparse_top_k: int = 10,
     rerank_top_n: int = 10
