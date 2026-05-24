@@ -1,5 +1,7 @@
 import json
 
+from fastapi import HTTPException
+from fastapi import status
 from sqlalchemy.orm import Session
 
 from app.models.conversation import (
@@ -9,6 +11,8 @@ from app.models.conversation import (
 from app.models.message import (
     Message
 )
+from app.models.subject import Subject
+from app.models.workspace import Workspace
 
 from app.rag.retriever import (
     retrieve_chunks
@@ -44,6 +48,22 @@ def generate_chat_response(
 
     conversation_id: str | None = None
 ):
+    subject = (
+        db.query(Subject)
+        .join(Workspace, Workspace.id == Subject.workspace_id)
+        .filter(
+            Subject.id == subject_id,
+            Subject.workspace_id == workspace_id,
+            Workspace.user_id == user_id
+        )
+        .first()
+    )
+
+    if not subject:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subject not found"
+        )
 
     # ==========================================
     # Create Conversation If Needed
@@ -75,7 +95,11 @@ def generate_chat_response(
             db.query(Conversation)
 
             .filter(
-                Conversation.id == conversation_id
+                Conversation.id == conversation_id,
+                Conversation.created_by == user_id,
+                Conversation.workspace_id == workspace_id,
+                Conversation.subject_id == subject_id,
+                Conversation.deleted_at.is_(None)
             )
 
             .first()
@@ -83,8 +107,9 @@ def generate_chat_response(
 
         if not conversation:
 
-            raise Exception(
-                "Conversation not found"
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
             )
 
     # ==========================================

@@ -1,0 +1,23 @@
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+
+# Virtual environments
+venv/
+.env/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

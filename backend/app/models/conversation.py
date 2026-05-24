@@ -66,6 +66,13 @@ class Conversation(Base):
         default=datetime.utcnow
     )
 
+    deleted_at = Column(
+
+        DateTime,
+
+        nullable=True
+    )
+
     # Relationships
     messages = relationship(
 

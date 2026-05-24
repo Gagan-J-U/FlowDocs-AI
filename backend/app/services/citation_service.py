@@ -10,8 +10,16 @@ def build_citation_block(
 
             "id": idx + 1,
 
+            "document_id": chunk.get(
+                "document_id"
+            ),
+
             "section_title": chunk.get(
                 "section_title"
+            ),
+
+            "parent_section": chunk.get(
+                "parent_section"
             ),
 
             "start_page": chunk.get(
@@ -20,6 +28,14 @@ def build_citation_block(
 
             "end_page": chunk.get(
                 "end_page"
+            ),
+
+            "snippet": (chunk.get(
+                "text"
+            ) or "")[:420],
+
+            "hybrid_score": chunk.get(
+                "hybrid_score"
             )
         }
 
