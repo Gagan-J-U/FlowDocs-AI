@@ -21,7 +21,7 @@ class DefaultStrategy(
         for idx, chunk in enumerate(chunks):
 
             block = f"""
-SOURCE {idx + 1}
+[{idx + 1}]
 
 Section:
 {chunk.get("section_title", "Unknown")}
@@ -50,14 +50,23 @@ Rules:
 - Use only information from the context.
 - Do not invent or assume facts.
 - If the answer is partially available, clearly mention what is available.
-- If the answer is not present in the context, respond with:
+- If the answer is not present in the context, respond exactly with:
 "I could not find the answer in the provided documents."
 - Keep the answer factual, clear, and well-structured.
-- Do not say phrases like:
-  "According to the documents" unless necessary.
 - Prefer direct explanations over copying sentences verbatim.
+- Do not mention phrases like:
+  "According to the documents"
+  "Based on the provided context"
+  unless absolutely necessary.
+- Cite supporting sources inline using:
+  [source_number]
+- Only use citation numbers that exist in the provided context.
+- Do NOT invent citations.
+- Multiple citations are allowed.
+  Example:
+  Spyware can record user activity [1][3]
 
-USER QUESTION:
+QUESTION:
 {query}
 
 
