@@ -126,3 +126,36 @@ def upload_document(
     )
 
     return document
+
+
+@router.get(
+    "/subject/{subject_id}",
+    response_model=list[DocumentResponse]
+)
+def get_subject_documents(
+    subject_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    subject = db.query(Subject).filter(
+        Subject.id == subject_id
+    ).first()
+
+    if not subject:
+        raise HTTPException(
+            status_code=404,
+            detail="Subject not found"
+        )
+
+    if subject.workspace.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view documents for this subject"
+        )
+
+    return (
+        db.query(Document)
+        .filter(Document.subject_id == subject_id)
+        .order_by(Document.uploaded_at.desc())
+        .all()
+    )

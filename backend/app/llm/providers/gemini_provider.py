@@ -50,3 +50,18 @@ class GeminiProvider(
         )
 
         return response.text
+
+    def stream(self, prompt: str, temperature: float = 0.2):
+        stream = self.client.models.generate_content_stream(
+            model=self.model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=temperature
+            )
+        )
+
+        for chunk in stream:
+            text = getattr(chunk, "text", None)
+
+            if text:
+                yield text

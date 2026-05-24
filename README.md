@@ -112,12 +112,17 @@ Query → LLM → Response
 
 ### Frontend
 
-* React / Next.js
+* React
+* TypeScript
 * Tailwind CSS
+* Framer Motion
+* Zustand
 
 ### Backend
 
 * FastAPI (Python)
+* SQLAlchemy
+* JWT auth
 
 ### Database
 
@@ -131,6 +136,7 @@ Query → LLM → Response
 
 * OpenAI API (cloud)
 * Ollama (local LLM)
+* Gemini API
 
 ### Document Processing
 
@@ -224,6 +230,7 @@ source venv/bin/activate   # (Linux/Mac)
 venv\Scripts\activate      # (Windows)
 
 pip install -r requirements.txt
+alembic upgrade head
 ```
 
 ---
@@ -231,7 +238,7 @@ pip install -r requirements.txt
 ### 3. Run Backend
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn main:app --reload
 ```
 
 ---
@@ -245,13 +252,58 @@ storage/
 
 ---
 
-### 5. Environment Variables
+### 5. Frontend Setup
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+---
+
+## API Surface
+
+### Conversations
+
+* `GET /conversations/workspace/{workspace_id}`
+* `GET /conversations/{conversation_id}`
+* `GET /conversations/{conversation_id}/messages`
+* `DELETE /conversations/{conversation_id}`
+
+### Streaming Chat
+
+`POST /chat-stream/` is an authenticated Server-Sent Events endpoint. It emits `conversation`, `token`, `done`, and `error` events so the frontend can render partial tokens without full re-renders.
+
+---
+
+### 6. Environment Variables
 
 Create `.env` file:
 
 ```
-OPENAI_API_KEY=your_key
-LLM_MODE=cloud
+DATABASE_URL=postgresql://...
+SECRET_KEY=...
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+OPENAI_API_KEY=...
+GEMINI_API_KEY=...
+GOOGLE_API_KEY=...
+HF_LOCAL_FILES_ONLY=1
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+---
+
+## Verification
+
+```bash
+cd backend
+./venv/bin/python -m compileall app
+./venv/bin/python -m pytest
+
+cd ../frontend
+npm run build
 ```
 
 ---

@@ -16,8 +16,12 @@ from app.schemas.chat import (
 )
 
 from app.services.chat_stream_service import (
-    stream_chat_response
+    stream_persistent_chat_response
 )
+from app.api.dependencies.auth import (
+    get_current_user
+)
+from app.models.user import User
 
 
 router = APIRouter(
@@ -33,12 +37,18 @@ def stream_chat(
 
     request: ChatRequest,
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(
+        get_current_user
+    )
 ):
 
-    generator = stream_chat_response(
+    generator = stream_persistent_chat_response(
 
         db=db,
+
+        user_id=current_user.id,
 
         workspace_id=request.workspace_id,
 
@@ -48,12 +58,19 @@ def stream_chat(
 
         mode=request.mode,
 
-        provider=request.provider
+        provider=request.provider,
+
+        conversation_id=request.conversation_id
     )
 
     return StreamingResponse(
 
         generator,
 
-        media_type="text/plain"
+        media_type="text/event-stream",
+
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"
+        }
     )
