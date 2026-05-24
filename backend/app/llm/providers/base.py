@@ -15,3 +15,15 @@ class BaseLLMProvider(ABC):
     ) -> str:
 
         pass
+
+    @abstractmethod
+    def stream(
+
+        self,
+
+        prompt: str,
+
+        temperature: float = 0.2
+    ):
+
+        pass

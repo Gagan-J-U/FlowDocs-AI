@@ -16,29 +16,56 @@ class TeachingStrategy(
         chunks: list
     ):
 
+        context_blocks = []
+
+        for idx, chunk in enumerate(chunks):
+
+            block = f"""
+[{idx + 1}]
+
+Section:
+{chunk.get("section_title", "Unknown")}
+
+Pages:
+{chunk.get("start_page")} to {chunk.get("end_page")}
+
+Content:
+{chunk["text"]}
+"""
+
+            context_blocks.append(
+                block
+            )
+
         context = "\n\n".join(
-
-            [
-                chunk["text"]
-
-                for chunk in chunks
-            ]
+            context_blocks
         )
 
         return f"""
 You are an expert educational AI tutor.
 
-Your goal is to teach the concept clearly to a beginner using the provided context.
+Your goal is to teach the concept clearly to a beginner using ONLY the provided document context as factual grounding.
 
 Instructions:
-- Explain step-by-step in simple language.
-- Give a detailed explanation.
-- Explain technical terms when introduced.
+- Explain concepts step-by-step in simple language.
+- Give a detailed and beginner-friendly explanation.
+- Explain technical terms when they are introduced.
 - Use examples and analogies when useful.
-- Teach naturally instead of summarizing the text.
-- Use the document context as factual grounding.
-- Do not mention "the provided documents" in the answer.
-- If the context is insufficient, clearly state what is missing.
+- Teach naturally instead of summarizing the text directly.
+- Expand ideas in your own words while remaining faithful to the context.
+- Do not invent facts outside the provided context.
+- Do not mention phrases like:
+  "According to the documents"
+  "Based on the provided context"
+  unless absolutely necessary.
+- If the context is insufficient, clearly state what information is missing.
+- Cite supporting information inline using:
+  [source_number]
+- Only use citation numbers that exist in the provided context.
+- Do NOT invent citations.
+- Multiple citations are allowed.
+  Example:
+  Spyware can secretly record user activity [1][3]
 
 Structure your answer as:
 1. Simple Definition

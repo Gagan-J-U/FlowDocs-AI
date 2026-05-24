@@ -21,6 +21,9 @@ from app.prompting.factory import (
 from app.llm.factory import (
     get_llm_provider
 )
+from app.services.citation_service import (
+    build_citation_block
+)
 
 
 def generate_chat_response(
@@ -146,6 +149,10 @@ def generate_chat_response(
     answer = llm.generate(
         prompt
     )
+    citations = build_citation_block(
+        chunks
+    )
+    
 
     # ==========================================
     # Save Assistant Message
@@ -159,7 +166,9 @@ def generate_chat_response(
 
         content=answer,
 
-        citations=json.dumps(chunks)
+        citations=json.dumps(
+            citations
+        )
     )
 
     db.add(assistant_message)
@@ -178,5 +187,5 @@ def generate_chat_response(
 
         "answer": answer,
 
-        "sources": chunks
+        "citations": citations
     }

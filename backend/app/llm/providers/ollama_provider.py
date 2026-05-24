@@ -34,3 +34,36 @@ class OllamaProvider(
         )
 
         return response["message"]["content"]
+
+    def stream(
+
+        self,
+
+        prompt: str,
+
+        temperature: float = 0.2
+    ):
+
+        stream = ollama.chat(
+
+            model=self.model,
+
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+
+            stream=True,
+
+            options={
+                "temperature": temperature
+            }
+        )
+
+        for chunk in stream:
+
+            token = chunk["message"]["content"]
+
+            yield token

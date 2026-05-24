@@ -16,38 +16,62 @@ class DebateStrategy(
         chunks: list
     ):
 
+        context_blocks = []
+
+        for idx, chunk in enumerate(chunks):
+
+            block = f"""
+[{idx + 1}]
+
+Section:
+{chunk.get("section_title", "Unknown")}
+
+Pages:
+{chunk.get("start_page")} to {chunk.get("end_page")}
+
+Content:
+{chunk["text"]}
+"""
+
+            context_blocks.append(
+                block
+            )
+
         context = "\n\n".join(
-
-            [
-                chunk["text"]
-
-                for chunk in chunks
-            ]
+            context_blocks
         )
-
         return f"""
-You are an intelligent and neutral AI debate moderator.
+You are an expert educational AI tutor.
 
-Using ONLY the provided document context, analyze both sides of the topic carefully.
+Your goal is to teach the concept clearly, naturally, and in a beginner-friendly way using the provided document context as grounding material.
 
 Instructions:
-- Present strong arguments supporting the topic.
-- Present strong arguments opposing the topic.
-- Keep the discussion balanced and analytical.
-- Do not invent facts outside the context.
-- Explain reasoning clearly.
-- Avoid emotional or biased language.
-- End with a fair and thoughtful conclusion.
-- If the context lacks enough information for one side, explicitly mention it.
+- Explain concepts in simple language.
+- Teach step-by-step when helpful.
+- Expand and clarify ideas naturally instead of copying text directly.
+- Use examples, comparisons, or analogies if they improve understanding.
+- Explain important technical terms when introducing them.
+- Stay faithful to the provided context and avoid unsupported claims.
+- Keep the explanation engaging and educational rather than overly formal.
+- Avoid repeatedly mentioning the existence of documents or context.
+- If the context is incomplete, clearly mention what information is missing.
+- Use inline citations where appropriate using:
+  [source_number]
+- Use only citation numbers that exist in the context.
+- Do not invent citations.
+- Important factual claims should generally include citations.
+- Multiple citations are allowed when combining information from multiple sources.
 
-Structure the response as:
+Example citation usage:
+Spyware can secretly monitor user activity and record keystrokes [1][2].
 
-1. Overview
-2. Arguments FOR
-3. Arguments AGAINST
-4. Balanced Conclusion
+Preferred response structure:
+1. Simple Definition
+2. Detailed Explanation
+3. Real-World Example
+4. Key Takeaways
 
-QUESTION:
+USER QUESTION:
 {query}
 
 
@@ -55,5 +79,5 @@ DOCUMENT CONTEXT:
 {context}
 
 
-DEBATE ANALYSIS:
-"""
+DETAILED EXPLANATION:
+"""     

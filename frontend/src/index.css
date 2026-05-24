@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: #070a12;
+  color: #f8fafc;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(143, 211, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 80% 8%, rgba(155, 231, 199, 0.12), transparent 28%),
+    linear-gradient(135deg, #070a12 0%, #0b1020 44%, #10131d 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+.glass {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+  backdrop-filter: blur(22px);
+}
+
+.markdown-stream p {
+  margin: 0.55rem 0;
+}
+
+.markdown-stream pre {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
