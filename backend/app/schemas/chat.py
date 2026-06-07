@@ -3,11 +3,13 @@ from pydantic import BaseModel
 
 class ChatRequest(BaseModel):
 
-    workspace_id: str
-
-    subject_id: str
-
     query: str
+
+    chat_type: str = "rag"
+
+    workspace_id: str | None = None
+
+    subject_id: str | None = None
 
     mode: str = "default"
 
@@ -21,3 +23,5 @@ class ChatResponse(BaseModel):
     conversation_id: str
 
     answer: str
+
+    figures: list = []

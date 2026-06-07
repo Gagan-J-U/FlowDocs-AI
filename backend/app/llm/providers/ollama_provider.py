@@ -20,6 +20,7 @@ class OllamaProvider(
         self,
         prompt: str
     ) -> str:
+        print("ollama is generating now")
 
         response = ollama.chat(
 

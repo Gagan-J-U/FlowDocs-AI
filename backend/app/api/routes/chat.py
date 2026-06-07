@@ -48,11 +48,13 @@ def chat(
 
         user_id=current_user.id,
 
+        query=request.query,
+
+        chat_type=request.chat_type,
+
         workspace_id=request.workspace_id,
 
         subject_id=request.subject_id,
-
-        query=request.query,
 
         mode=request.mode,
 

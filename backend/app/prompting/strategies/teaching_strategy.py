@@ -13,8 +13,36 @@ class TeachingStrategy(
 
         query: str,
 
-        chunks: list
+        chunks: list,
+
+        figures=None
     ):
+        figure_context = ""
+
+        if figures:
+
+            blocks = []
+
+            for index, figure in enumerate(figures):
+
+                blocks.append(
+                    f"""
+        [Figure {index + 1}]
+
+        Figure ID:
+        {figure["figure_id"]}
+
+        Page:
+        {figure["page_number"]}
+
+        Caption:
+        {figure["caption"]}
+        """
+                )
+
+            figure_context = "\n".join(
+                blocks
+            )
 
         context_blocks = []
 
@@ -66,6 +94,11 @@ Instructions:
 - Multiple citations are allowed.
   Example:
   Spyware can secretly record user activity [1][3]
+-When referring to a figure use:
+[FIGURE:figure_id]
+Example:
+The architecture is shown in the network diagram
+[FIGURE:a1b2c3]
 
 Structure your answer as:
 1. Simple Definition
@@ -79,6 +112,9 @@ USER QUESTION:
 
 DOCUMENT CONTEXT:
 {context}
+
+AVAILABLE FIGURES:
+{figure_context}
 
 
 DETAILED EXPLANATION:

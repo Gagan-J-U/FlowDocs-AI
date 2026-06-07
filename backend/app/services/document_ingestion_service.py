@@ -41,6 +41,14 @@ from app.rag.bm25_cache import (
     bm25_cache
 )
 
+from app.services.figure_service import (
+    store_figures
+)
+
+from app.services.figure_index_service import (
+    index_figures
+)
+
 # ==========================================
 # INGEST DOCUMENT
 # ==========================================
@@ -72,6 +80,43 @@ def ingest_document(
     )
 
     print("PDF extraction completed.")
+
+    # ======================================
+    # STORE FIGURES
+    # ======================================
+
+    stored_figures = store_figures(
+
+        document_id=document.id,
+
+        extracted_images=extraction_result[
+            "images"
+        ],
+
+        db=db
+    )
+
+    print(
+        f"Figures stored: "
+        f"{len(stored_figures)}"
+    )
+    # ======================================
+    # INDEX FIGURE CAPTIONS
+    # ======================================
+
+    index_figures(
+
+        workspace_id=workspace_id,
+
+        subject_id=subject_id,
+
+        figures=stored_figures
+    )
+
+    print(
+        f"Figure captions indexed: "
+        f"{len(stored_figures)}"
+    )
 
     # ======================================
     # BUILD SECTIONS
@@ -210,7 +255,9 @@ def ingest_document(
 
         "sections": len(sections),
 
-        "chunks": len(stored_chunks)
+        "chunks": len(stored_chunks),
+
+        "figures": len(stored_figures)
     }
 
 

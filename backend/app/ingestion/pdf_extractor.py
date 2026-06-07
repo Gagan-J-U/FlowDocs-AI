@@ -180,10 +180,22 @@ def extract_pdf_content(
                 img_file.write(image_bytes)
 
             extracted_images.append({
+
                 "page_number": page_number,
+
+                "figure_index": image_index,
+
                 "image_filename": image_filename,
+
                 "image_path": image_path,
-                "detected_figures": detected_figures
+
+                "width": width,
+
+                "height": height,
+
+                "detected_figures": detected_figures,
+
+                "nearby_text": full_page_text[:2000]
             })
 
     document.close()

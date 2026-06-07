@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { MessageSquare, Plus, Trash2, UsersRound } from "lucide-react";
+import { MessageSquare, Moon, Plus, Sun, Trash2, UsersRound } from "lucide-react";
 import { api } from "../lib/api";
 import { formatRelativeTime } from "../lib/utils";
 import { useAppStore } from "../store/app-store";
@@ -15,12 +15,14 @@ export function Sidebar() {
     selectedWorkspaceId,
     selectedSubjectId,
     selectedConversationId,
+    theme,
     setWorkspaces,
     setSubjects,
     setConversations,
     setSelectedWorkspaceId,
     setSelectedSubjectId,
     setSelectedConversationId,
+    setTheme,
     setMessages,
     resetSession,
   } = useAppStore();
@@ -70,17 +72,28 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex min-h-0 flex-col gap-4 border-r border-white/10 bg-black/20 p-4">
+    <aside className="flex min-h-0 flex-col gap-4 border-r border-line/70 bg-panel/65 p-4 dark:border-white/10 dark:bg-black/20">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-brand/80">FlowDocs</p>
-          <h1 className="text-lg font-semibold text-white">Research OS</h1>
+          <h1 className="text-lg font-semibold text-foreground dark:text-white">Research OS</h1>
         </div>
-        <Button variant="ghost" size="sm" onClick={resetSession}>Logout</Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={resetSession}>Logout</Button>
+        </div>
       </div>
 
       <section className="grid gap-2">
-        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted">
           <UsersRound className="h-3.5 w-3.5" /> Workspaces
         </div>
         <form onSubmit={createWorkspace} className="flex gap-2">
@@ -101,7 +114,7 @@ export function Sidebar() {
               className={`rounded-lg px-3 py-2 text-left text-sm transition ${
                 selectedWorkspaceId === workspace.id
                   ? "bg-brand/15 text-brand"
-                  : "text-slate-300 hover:bg-white/[0.07]"
+                  : "text-muted hover:bg-subtle/60 hover:text-foreground dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-white"
               }`}
             >
               {workspace.name}
@@ -111,7 +124,7 @@ export function Sidebar() {
       </section>
 
       <section className="grid gap-2">
-        <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Subjects</div>
+        <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Subjects</div>
         <form onSubmit={createSubject} className="flex gap-2">
           <Input
             value={subjectName}
@@ -131,7 +144,7 @@ export function Sidebar() {
               className={`rounded-lg px-3 py-2 text-left text-sm transition ${
                 selectedSubjectId === subject.id
                   ? "bg-mint/15 text-mint"
-                  : "text-slate-300 hover:bg-white/[0.07]"
+                  : "text-muted hover:bg-subtle/60 hover:text-foreground dark:text-slate-300 dark:hover:bg-white/[0.07] dark:hover:text-white"
               }`}
             >
               {subject.name}
@@ -142,7 +155,7 @@ export function Sidebar() {
 
       <section className="min-h-0 flex-1">
         <div className="mb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-muted">
             <MessageSquare className="h-3.5 w-3.5" /> Conversations
           </div>
           <Button
@@ -164,22 +177,22 @@ export function Sidebar() {
               className={`group rounded-xl border p-3 transition ${
                 selectedConversationId === conversation.id
                   ? "border-brand/35 bg-brand/10"
-                  : "border-white/10 bg-white/[0.035] hover:bg-white/[0.065]"
+                  : "border-line/70 bg-card/70 hover:bg-subtle/40 dark:border-white/10 dark:bg-white/[0.035] dark:hover:bg-white/[0.065]"
               }`}
             >
               <button className="w-full text-left" onClick={() => openConversation(conversation.id)}>
-                <div className="line-clamp-1 text-sm font-medium text-slate-100">{conversation.title}</div>
-                <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                <div className="line-clamp-1 text-sm font-medium text-foreground dark:text-slate-100">{conversation.title}</div>
+                <div className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
                   {conversation.latest_message_preview ?? "No messages yet"}
                 </div>
-                <div className="mt-2 text-[11px] text-slate-600">
+                <div className="mt-2 text-[11px] text-muted/80">
                   {conversation.message_count} messages · {formatRelativeTime(conversation.latest_activity)}
                 </div>
               </button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="mt-2 hidden h-7 w-7 text-slate-500 group-hover:inline-flex"
+                className="mt-2 hidden h-7 w-7 text-muted group-hover:inline-flex"
                 onClick={() => removeConversation(conversation.id)}
                 aria-label="Delete conversation"
               >

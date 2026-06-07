@@ -1,7 +1,11 @@
 import type {
+  ChatResult,
+  ComparisonResult,
   ConversationSummary,
   DocumentRecord,
   Message,
+  PromptMode,
+  Provider,
   Subject,
   Workspace,
 } from "../types";
@@ -15,6 +19,25 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+export function isAuthError(error: unknown) {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403);
+}
+
+function detailToMessage(detail: unknown, fallback: string) {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "msg" in item) return String(item.msg);
+        return JSON.stringify(item);
+      })
+      .join("; ");
+  }
+  if (detail && typeof detail === "object") return JSON.stringify(detail);
+  return fallback;
 }
 
 async function request<T>(
@@ -41,7 +64,7 @@ async function request<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new ApiError(body.detail ?? response.statusText, response.status);
+    throw new ApiError(detailToMessage(body.detail, response.statusText), response.status);
   }
 
   return response.json() as Promise<T>;
@@ -110,15 +133,69 @@ export const api = {
       };
 
       xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(JSON.parse(xhr.responseText));
-        } else {
-          reject(new ApiError(xhr.responseText || "Upload failed", xhr.status));
+        try {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            onProgress?.(100);
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            const body = JSON.parse(xhr.responseText || "{}");
+            reject(new ApiError(detailToMessage(body.detail, "Upload failed"), xhr.status));
+          }
+        } catch {
+          reject(new ApiError(xhr.responseText || "Upload failed", xhr.status || 500));
         }
       };
       xhr.onerror = () => reject(new ApiError("Upload failed", xhr.status || 500));
       xhr.send(form);
     });
+  },
+  chat(
+    token: string,
+    input: {
+      workspaceId: string;
+      subjectId: string;
+      query: string;
+      mode: PromptMode;
+      provider: Provider;
+      conversationId?: string | null;
+      signal?: AbortSignal;
+    },
+  ) {
+    return request<ChatResult>("/chat/", {
+      method: "POST",
+      signal: input.signal,
+      body: JSON.stringify({
+        workspace_id: input.workspaceId,
+        subject_id: input.subjectId,
+        query: input.query,
+        mode: input.mode,
+        provider: input.provider,
+        conversation_id: input.conversationId,
+      }),
+    }, token);
+  },
+  compareDocuments(
+    token: string,
+    input: {
+      workspaceId: string;
+      subjectId: string;
+      documentAId: string;
+      documentBId: string;
+      query: string;
+      provider: Provider;
+    },
+  ) {
+    return request<ComparisonResult>("/comparison/", {
+      method: "POST",
+      body: JSON.stringify({
+        workspace_id: input.workspaceId,
+        subject_id: input.subjectId,
+        document_a_id: input.documentAId,
+        document_b_id: input.documentBId,
+        query: input.query,
+        provider: input.provider,
+      }),
+    }, token);
   },
   conversations(token: string, workspaceId: string) {
     return request<ConversationSummary[]>(`/conversations/workspace/${workspaceId}`, {}, token);

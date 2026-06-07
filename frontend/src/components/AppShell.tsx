@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { PanelLeft } from "lucide-react";
-import { api } from "../lib/api";
+import { Loader2, PanelLeft } from "lucide-react";
+import { api, isAuthError } from "../lib/api";
 import { useAppStore } from "../store/app-store";
 import { Button } from "./ui/button";
 import { ChatPanel } from "./ChatPanel";
@@ -18,33 +18,53 @@ export function AppShell() {
     setConversations,
     setSelectedWorkspaceId,
     setSelectedSubjectId,
+    resetSession,
   } = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
     if (!token) return;
+    let cancelled = false;
 
     async function loadBase() {
-      const [workspaces, subjects] = await Promise.all([
-        api.workspaces(token!),
-        api.subjects(token!),
-      ]);
-      setWorkspaces(workspaces);
-      setSubjects(subjects);
+      setCheckingSession(true);
+      try {
+        const [workspaces, subjects] = await Promise.all([
+          api.workspaces(token!),
+          api.subjects(token!),
+        ]);
 
-      if (!selectedWorkspaceId && workspaces[0]) {
-        setSelectedWorkspaceId(workspaces[0].id);
-      }
+        if (cancelled) return;
 
-      const workspaceId = selectedWorkspaceId ?? workspaces[0]?.id;
-      const subject = subjects.find((item) => item.workspace_id === workspaceId);
-      if (!selectedSubjectId && subject) {
-        setSelectedSubjectId(subject.id);
+        setWorkspaces(workspaces);
+        setSubjects(subjects);
+
+        if (!selectedWorkspaceId && workspaces[0]) {
+          setSelectedWorkspaceId(workspaces[0].id);
+        }
+
+        const workspaceId = selectedWorkspaceId ?? workspaces[0]?.id;
+        const subject = subjects.find((item) => item.workspace_id === workspaceId);
+        if (!selectedSubjectId && subject) {
+          setSelectedSubjectId(subject.id);
+        }
+      } catch (error) {
+        if (!cancelled && isAuthError(error)) {
+          resetSession();
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingSession(false);
+        }
       }
     }
 
     void loadBase();
-  }, [token]);
+    return () => {
+      cancelled = true;
+    };
+  }, [token, resetSession, selectedSubjectId, selectedWorkspaceId, setSelectedSubjectId, setSelectedWorkspaceId, setSubjects, setWorkspaces]);
 
   useEffect(() => {
     if (!token || !selectedWorkspaceId) {
@@ -52,8 +72,12 @@ export function AppShell() {
       return;
     }
 
-    void api.conversations(token, selectedWorkspaceId).then(setConversations);
-  }, [token, selectedWorkspaceId, setConversations]);
+    void api.conversations(token, selectedWorkspaceId)
+      .then(setConversations)
+      .catch((error) => {
+        if (isAuthError(error)) resetSession();
+      });
+  }, [token, selectedWorkspaceId, setConversations, resetSession]);
 
   useEffect(() => {
     if (!token || !selectedSubjectId) {
@@ -61,12 +85,27 @@ export function AppShell() {
       return;
     }
 
-    void api.documents(token, selectedSubjectId).then(setDocuments);
-  }, [token, selectedSubjectId, setDocuments]);
+    void api.documents(token, selectedSubjectId)
+      .then(setDocuments)
+      .catch((error) => {
+        if (isAuthError(error)) resetSession();
+      });
+  }, [token, selectedSubjectId, setDocuments, resetSession]);
+
+  if (checkingSession) {
+    return (
+      <div className="grid h-screen place-items-center text-foreground">
+        <div className="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted">
+          <Loader2 className="h-4 w-4 animate-spin text-brand" />
+          Checking session
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen overflow-hidden p-2 md:p-4">
-      <div className="glass grid h-full overflow-hidden rounded-2xl shadow-panel lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_360px]">
+    <div className="h-screen overflow-hidden p-2 text-foreground md:p-4">
+      <div className="glass grid h-full overflow-hidden rounded-2xl shadow-panel lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_380px]">
         <div className="hidden min-h-0 lg:block">
           <Sidebar />
         </div>
@@ -76,7 +115,7 @@ export function AppShell() {
           </Button>
         </div>
         {sidebarOpen && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)}>
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)}>
             <div className="h-full w-[86vw] max-w-sm" onClick={(event) => event.stopPropagation()}>
               <Sidebar />
             </div>

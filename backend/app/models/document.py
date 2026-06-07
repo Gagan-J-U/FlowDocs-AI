@@ -69,3 +69,9 @@ class Document(Base):
         back_populates="document",
         cascade="all, delete"
     )
+
+    figures = relationship(
+        "Figure",
+        back_populates="document",
+        cascade="all, delete"
+    )

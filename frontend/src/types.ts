@@ -1,6 +1,7 @@
 export type Provider = "ollama" | "openai" | "gemini";
 export type PromptMode = "default" | "teaching" | "debate";
 export type Role = "user" | "assistant" | "system";
+export type Theme = "dark" | "light";
 
 export interface Workspace {
   id: string;
@@ -40,6 +41,18 @@ export interface Citation {
   [key: string]: unknown;
 }
 
+export interface FigureReference {
+  figure_id?: string;
+  page_number?: number | string | null;
+  caption?: string | null;
+  image_path?: string | null;
+  image_url?: string | null;
+  url?: string | null;
+  width?: number | null;
+  height?: number | null;
+  [key: string]: unknown;
+}
+
 export interface ConversationSummary {
   id: string;
   title: string;
@@ -54,6 +67,28 @@ export interface Message {
   role: Role;
   content: string;
   citations: Citation[];
+  figures?: FigureReference[];
+  referenced_figures?: FigureReference[];
   created_at: string;
   streaming?: boolean;
+}
+
+export interface ChatResult {
+  conversation_id: string;
+  query?: string;
+  answer: string;
+  citations?: Citation[];
+  sources?: Citation[];
+  figures?: FigureReference[];
+  referenced_figures?: FigureReference[];
+}
+
+export interface ComparisonResult {
+  answer?: string;
+  result?: string;
+  comparison?: string;
+  document_a_sources?: Citation[];
+  document_b_sources?: Citation[];
+  sources?: Citation[];
+  [key: string]: unknown;
 }

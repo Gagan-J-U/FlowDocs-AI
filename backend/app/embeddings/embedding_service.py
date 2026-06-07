@@ -7,17 +7,27 @@ import os
 
 
 # ==========================================
-# LOAD MODEL
+# CONFIG
 # ==========================================
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+MODEL_NAME = os.getenv(
+    "EMBEDDING_MODEL",
+    "BAAI/bge-base-en-v1.5"
+)
 
 LOCAL_FILES_ONLY = (
-    os.getenv("HF_LOCAL_FILES_ONLY", "1") != "0"
+    os.getenv(
+        "HF_LOCAL_FILES_ONLY",
+        "1"
+    ) != "0"
 )
 
 embedding_model = None
 
+
+# ==========================================
+# MODEL LOADER
+# ==========================================
 
 def get_embedding_model():
 
@@ -26,7 +36,9 @@ def get_embedding_model():
     if embedding_model is None:
 
         embedding_model = SentenceTransformer(
+
             MODEL_NAME,
+
             local_files_only=LOCAL_FILES_ONLY
         )
 
@@ -34,13 +46,19 @@ def get_embedding_model():
 
 
 # ==========================================
-# GENERATE SINGLE EMBEDDING
+# SINGLE EMBEDDING
 # ==========================================
 
-def generate_embedding(text: str):
+def generate_embedding(
+    text: str
+):
 
-    embedding = get_embedding_model().encode(
+    model = get_embedding_model()
+
+    embedding = model.encode(
+
         text,
+
         normalize_embeddings=True
     )
 
@@ -50,18 +68,29 @@ def generate_embedding(text: str):
 
 
 # ==========================================
-# GENERATE MULTIPLE EMBEDDINGS
+# BATCH EMBEDDINGS
 # ==========================================
 
-def generate_embeddings(texts):
+def generate_embeddings(
+    texts
+):
 
-    embeddings = get_embedding_model().encode(
+    model = get_embedding_model()
+
+    embeddings = model.encode(
+
         texts,
+
         normalize_embeddings=True,
+
+        batch_size=32,
+
         show_progress_bar=True
     )
 
     return np.array(
+
         embeddings,
+
         dtype=np.float32
     )

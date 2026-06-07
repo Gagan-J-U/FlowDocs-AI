@@ -3,10 +3,38 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  background: #070a12;
-  color: #f8fafc;
+  --color-ink: 247 249 252;
+  --color-panel: 255 255 255;
+  --color-card: 255 255 255;
+  --color-foreground: 20 31 45;
+  --color-muted: 99 115 137;
+  --color-subtle: 226 232 240;
+  --color-line: 208 216 226;
+  --color-brand: 22 119 189;
+  --color-mint: 23 145 111;
+  --body-bg:
+    linear-gradient(135deg, #f8fbff 0%, #eef6ff 42%, #f7fafc 100%);
+  color: rgb(var(--color-foreground));
+  background: rgb(var(--color-ink));
+}
+
+:root.dark {
+  color-scheme: dark;
+  --color-ink: 7 10 18;
+  --color-panel: 13 17 28;
+  --color-card: 20 26 39;
+  --color-foreground: 248 250 252;
+  --color-muted: 148 163 184;
+  --color-subtle: 51 65 85;
+  --color-line: 45 55 72;
+  --color-brand: 143 211 255;
+  --color-mint: 155 231 199;
+  --body-bg:
+    radial-gradient(circle at 18% 12%, rgba(143, 211, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 80% 8%, rgba(155, 231, 199, 0.12), transparent 28%),
+    linear-gradient(135deg, #070a12 0%, #0b1020 44%, #10131d 100%);
 }
 
 body {
@@ -14,10 +42,7 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 12%, rgba(143, 211, 255, 0.16), transparent 30%),
-    radial-gradient(circle at 80% 8%, rgba(155, 231, 199, 0.12), transparent 28%),
-    linear-gradient(135deg, #070a12 0%, #0b1020 44%, #10131d 100%);
+  background: var(--body-bg);
 }
 
 * {
@@ -36,16 +61,21 @@ select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgb(var(--color-muted) / 0.26);
   border: 3px solid transparent;
   border-radius: 999px;
   background-clip: content-box;
 }
 
 .glass {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+  border: 1px solid rgb(var(--color-line) / 0.78);
+  background: linear-gradient(180deg, rgb(var(--color-panel) / 0.88), rgb(var(--color-card) / 0.72));
   backdrop-filter: blur(22px);
+}
+
+.dark .glass {
+  border-color: rgb(255 255 255 / 0.1);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.035));
 }
 
 .markdown-stream p {
