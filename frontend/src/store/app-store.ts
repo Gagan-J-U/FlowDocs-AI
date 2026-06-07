@@ -8,6 +8,7 @@ import type {
   PromptMode,
   Provider,
   Subject,
+  Theme,
   Workspace,
 } from "../types";
 
@@ -24,6 +25,7 @@ interface AppState {
   selectedCitation: Citation | null;
   provider: Provider;
   mode: PromptMode;
+  theme: Theme;
   streaming: boolean;
   setToken: (token: string | null) => void;
   setWorkspaces: (workspaces: Workspace[]) => void;
@@ -32,13 +34,14 @@ interface AppState {
   setConversations: (conversations: ConversationSummary[]) => void;
   setMessages: (messages: Message[]) => void;
   appendMessage: (message: Message) => void;
-  updateStreamingMessage: (content: string, citations?: Citation[]) => void;
+  updateStreamingMessage: (content: string, citations?: Citation[], figures?: Message["referenced_figures"]) => void;
   setSelectedWorkspaceId: (id: string | null) => void;
   setSelectedSubjectId: (id: string | null) => void;
   setSelectedConversationId: (id: string | null) => void;
   setSelectedCitation: (citation: Citation | null) => void;
   setProvider: (provider: Provider) => void;
   setMode: (mode: PromptMode) => void;
+  setTheme: (theme: Theme) => void;
   setStreaming: (streaming: boolean) => void;
   resetSession: () => void;
 }
@@ -58,15 +61,28 @@ export const useAppStore = create<AppState>()(
       selectedCitation: null,
       provider: "ollama",
       mode: "default",
+      theme: "dark",
       streaming: false,
-      setToken: (token) => set({ token }),
+      setToken: (token) => set({
+        token,
+        workspaces: [],
+        subjects: [],
+        documents: [],
+        conversations: [],
+        messages: [],
+        selectedWorkspaceId: null,
+        selectedSubjectId: null,
+        selectedConversationId: null,
+        selectedCitation: null,
+        streaming: false,
+      }),
       setWorkspaces: (workspaces) => set({ workspaces }),
       setSubjects: (subjects) => set({ subjects }),
       setDocuments: (documents) => set({ documents }),
       setConversations: (conversations) => set({ conversations }),
       setMessages: (messages) => set({ messages }),
       appendMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
-      updateStreamingMessage: (content, citations = []) => set((state) => {
+      updateStreamingMessage: (content, citations = [], figures = []) => set((state) => {
         const messages = [...state.messages];
         let lastIndex = -1;
 
@@ -85,6 +101,7 @@ export const useAppStore = create<AppState>()(
           ...messages[lastIndex],
           content,
           citations,
+          referenced_figures: figures,
         };
 
         return { messages };
@@ -106,6 +123,7 @@ export const useAppStore = create<AppState>()(
       setSelectedCitation: (citation) => set({ selectedCitation: citation }),
       setProvider: (provider) => set({ provider }),
       setMode: (mode) => set({ mode }),
+      setTheme: (theme) => set({ theme }),
       setStreaming: (streaming) => set({ streaming }),
       resetSession: () => set({
         token: null,
@@ -129,6 +147,7 @@ export const useAppStore = create<AppState>()(
         selectedSubjectId: state.selectedSubjectId,
         provider: state.provider,
         mode: state.mode,
+        theme: state.theme,
       }),
     },
   ),

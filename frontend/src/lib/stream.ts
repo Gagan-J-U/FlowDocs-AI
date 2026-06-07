@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Citation, PromptMode, Provider } from "../types";
+import type { Citation, FigureReference, PromptMode, Provider } from "../types";
 
 export interface StreamChatInput {
   token: string;
@@ -12,7 +12,12 @@ export interface StreamChatInput {
   signal?: AbortSignal;
   onConversation: (conversationId: string, title: string) => void;
   onToken: (token: string) => void;
-  onDone: (payload: { conversation_id: string; citations: Citation[] }) => void;
+  onDone: (payload: {
+    conversation_id: string;
+    citations?: Citation[];
+    figures?: FigureReference[];
+    referenced_figures?: FigureReference[];
+  }) => void;
   onError: (message: string) => void;
 }
 

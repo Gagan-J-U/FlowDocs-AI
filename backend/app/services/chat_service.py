@@ -2,6 +2,7 @@ import json
 
 from fastapi import HTTPException
 from fastapi import status
+
 from sqlalchemy.orm import Session
 
 from app.models.conversation import (
@@ -11,22 +12,21 @@ from app.models.conversation import (
 from app.models.message import (
     Message
 )
-from app.models.subject import Subject
-from app.models.workspace import Workspace
 
-from app.rag.retriever import (
-    retrieve_chunks
+from app.models.subject import (
+    Subject
 )
 
-from app.prompting.factory import (
-    get_prompt_strategy
+from app.models.workspace import (
+    Workspace
 )
 
-from app.llm.factory import (
-    get_llm_provider
+from app.chat.orchestrator import (
+    orchestrator
 )
-from app.services.citation_service import (
-    build_citation_block
+
+from app.services.figure_citation_service import (
+    extract_figure_ids
 )
 
 
@@ -36,11 +36,13 @@ def generate_chat_response(
 
     user_id: str,
 
-    workspace_id: str,
-
-    subject_id: str,
-
     query: str,
+
+    chat_type: str = "rag",
+
+    workspace_id: str | None = None,
+
+    subject_id: str | None = None,
 
     mode: str = "default",
 
@@ -48,27 +50,52 @@ def generate_chat_response(
 
     conversation_id: str | None = None
 ):
-    subject = (
-        db.query(Subject)
-        .join(Workspace, Workspace.id == Subject.workspace_id)
-        .filter(
-            Subject.id == subject_id,
-            Subject.workspace_id == workspace_id,
-            Workspace.user_id == user_id
-        )
-        .first()
-    )
 
-    if not subject:
+    # ==========================================
+    # Validate RAG Subject Access
+    # ==========================================
+    if workspace_id is None:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subject not found"
+            status_code=400,
+            detail="workspace_id is required"
+        )
+    if chat_type == "rag":
+
+        subject = (
+
+            db.query(Subject)
+
+            .join(
+                Workspace,
+                Workspace.id == Subject.workspace_id
+            )
+
+            .filter(
+
+                Subject.id == subject_id,
+
+                Subject.workspace_id == workspace_id,
+
+                Workspace.user_id == user_id
+            )
+
+            .first()
         )
 
-    # ==========================================
-    # Create Conversation If Needed
-    # ==========================================
+        if not subject:
 
+            raise HTTPException(
+
+                status_code=status.HTTP_404_NOT_FOUND,
+
+                detail="Subject not found"
+            )
+
+    # ==========================================
+    # Create / Load Conversation
+    # ==========================================
+    
     if conversation_id is None:
 
         conversation = Conversation(
@@ -95,11 +122,7 @@ def generate_chat_response(
             db.query(Conversation)
 
             .filter(
-                Conversation.id == conversation_id,
-                Conversation.created_by == user_id,
-                Conversation.workspace_id == workspace_id,
-                Conversation.subject_id == subject_id,
-                Conversation.deleted_at.is_(None)
+                Conversation.id == conversation_id
             )
 
             .first()
@@ -108,7 +131,9 @@ def generate_chat_response(
         if not conversation:
 
             raise HTTPException(
+
                 status_code=status.HTTP_404_NOT_FOUND,
+
                 detail="Conversation not found"
             )
 
@@ -132,10 +157,12 @@ def generate_chat_response(
     db.commit()
 
     # ==========================================
-    # Retrieve Chunks
+    # AI Orchestration
     # ==========================================
 
-    chunks = retrieve_chunks(
+    result = orchestrator.handle(
+
+        chat_type=chat_type,
 
         db=db,
 
@@ -145,39 +172,44 @@ def generate_chat_response(
 
         query=query,
 
-        top_k=5
+        mode=mode,
+
+        provider=provider
     )
 
-    # ==========================================
-    # Build Prompt
-    # ==========================================
+    answer = result["answer"]
 
-    strategy = get_prompt_strategy(
-        mode
+    referenced_figure_ids = (
+
+        extract_figure_ids(
+            answer
+        )
     )
 
-    prompt = strategy.build(
-
-        query=query,
-
-        chunks=chunks
+    citations = result.get(
+        "citations",
+        []
     )
 
-    # ==========================================
-    # Generate AI Response
-    # ==========================================
-
-    llm = get_llm_provider(
-        provider
+    sources = result.get(
+        "sources",
+        []
     )
 
-    answer = llm.generate(
-        prompt
+    figures = result.get(
+        "figures",
+        []
     )
-    citations = build_citation_block(
-        chunks
-    )
-    
+
+    referenced_figures = [
+
+        figure
+
+        for figure in figures
+
+        if figure.get("figure_id")
+        in referenced_figure_ids
+    ]
 
     # ==========================================
     # Save Assistant Message
@@ -212,5 +244,11 @@ def generate_chat_response(
 
         "answer": answer,
 
-        "citations": citations
+        "citations": citations,
+
+        "sources": sources,
+
+        "figures":figures,
+
+        "referenced_figures":referenced_figures
     }

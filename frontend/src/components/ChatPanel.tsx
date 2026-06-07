@@ -2,10 +2,11 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, RefreshCcw, Send, Square } from "lucide-react";
 import { api } from "../lib/api";
-import { streamChat } from "../lib/stream";
 import { useAppStore } from "../store/app-store";
 import type { Message, PromptMode, Provider } from "../types";
 import { Button } from "./ui/button";
+import { ComparisonPanel } from "./ComparisonPanel";
+import { DocumentsPanel } from "./DocumentsPanel";
 import { MessageBubble } from "./MessageBubble";
 
 const providers: Provider[] = ["ollama", "openai", "gemini"];
@@ -17,7 +18,6 @@ export function ChatPanel() {
     workspaces,
     subjects,
     messages,
-    conversations,
     selectedWorkspaceId,
     selectedSubjectId,
     selectedConversationId,
@@ -26,7 +26,6 @@ export function ChatPanel() {
     streaming,
     setProvider,
     setMode,
-    setMessages,
     appendMessage,
     updateStreamingMessage,
     setSelectedConversationId,
@@ -37,7 +36,6 @@ export function ChatPanel() {
   const [error, setError] = useState<string | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const streamedText = useRef("");
   const latestUserQuery = useMemo(
     () => [...messages].reverse().find((message) => message.role === "user")?.content ?? "",
     [messages],
@@ -67,7 +65,6 @@ export function ChatPanel() {
 
     setError(null);
     setQuery("");
-    streamedText.current = "";
     const controller = new AbortController();
     abortRef.current = controller;
     setStreaming(true);
@@ -84,6 +81,7 @@ export function ChatPanel() {
       role: "assistant",
       content: "",
       citations: [],
+      referenced_figures: [],
       created_at: new Date().toISOString(),
       streaming: true,
     };
@@ -92,29 +90,25 @@ export function ChatPanel() {
     appendMessage(assistantMessage);
 
     try {
-      await streamChat({
-        token,
+      const result = await api.chat(token, {
+        signal: controller.signal,
         workspaceId: selectedWorkspaceId,
         subjectId: selectedSubjectId,
         query: content,
         mode,
         provider,
         conversationId: selectedConversationId,
-        signal: controller.signal,
-        onConversation: (conversationId) => setSelectedConversationId(conversationId),
-        onToken: (tokenText) => {
-          streamedText.current += tokenText;
-          updateStreamingMessage(streamedText.current);
-        },
-        onDone: async (payload) => {
-          updateStreamingMessage(streamedText.current, payload.citations ?? []);
-          await refreshConversations(payload.conversation_id);
-        },
-        onError: (message) => setError(message),
       });
+
+      updateStreamingMessage(
+        result.answer,
+        result.citations ?? [],
+        result.referenced_figures?.length ? result.referenced_figures : result.figures ?? [],
+      );
+      await refreshConversations(result.conversation_id);
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
-        setError(err instanceof Error ? err.message : "Streaming failed");
+        setError(err instanceof Error ? err.message : "Chat failed");
       }
     } finally {
       setStreaming(false);
@@ -134,28 +128,30 @@ export function ChatPanel() {
 
   return (
     <main className="flex min-h-0 flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-black/10 px-5 py-4">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 bg-panel/50 px-5 py-4 dark:border-white/10 dark:bg-black/10">
         <div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-brand/80">
             <Bot className="h-3.5 w-3.5" /> {workspace?.name ?? "No workspace"}
           </div>
-          <h2 className="mt-1 text-xl font-semibold text-white">{subject?.name ?? "Select a subject"}</h2>
+          <h2 className="mt-1 text-xl font-semibold text-foreground dark:text-white">{subject?.name ?? "Select a subject"}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <select
             value={provider}
             onChange={(event) => setProvider(event.target.value as Provider)}
-            className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-sm text-slate-100 outline-none"
+            className="h-9 rounded-lg border border-line/80 bg-card/80 px-3 text-sm text-foreground outline-none dark:border-white/10 dark:bg-white/[0.07] dark:text-slate-100"
           >
             {providers.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
-          <div className="flex rounded-lg border border-white/10 bg-white/[0.045] p-1">
+          <div className="flex rounded-lg border border-line/80 bg-card/80 p-1 dark:border-white/10 dark:bg-white/[0.045]">
             {modes.map((item) => (
               <button
                 key={item}
                 onClick={() => setMode(item)}
                 className={`rounded-md px-3 py-1.5 text-xs capitalize transition ${
-                  mode === item ? "bg-white/12 text-white" : "text-slate-400 hover:text-white"
+                  mode === item
+                    ? "bg-brand/15 text-brand"
+                    : "text-muted hover:text-foreground dark:text-slate-400 dark:hover:text-white"
                 }`}
               >
                 {item}
@@ -166,6 +162,10 @@ export function ChatPanel() {
       </header>
 
       <div ref={viewportRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div className="mx-auto mb-5 grid max-w-4xl gap-4 xl:hidden">
+          <DocumentsPanel />
+          <ComparisonPanel />
+        </div>
         <div className="mx-auto grid max-w-4xl gap-5">
           <AnimatePresence initial={false}>
             {messages.map((message) => (
@@ -184,9 +184,9 @@ export function ChatPanel() {
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-brand/25 bg-brand/10">
                 <Bot className="h-7 w-7 text-brand" />
               </div>
-              <h3 className="mt-5 text-2xl font-semibold text-white">Ask across this subject</h3>
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">
-                Stream a grounded response, switch providers, or use teaching and debate modes for different reasoning styles.
+              <h3 className="mt-5 text-2xl font-semibold text-foreground dark:text-white">Ask across this subject</h3>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted">
+                Get grounded answers with citations, referenced figures, and mode-specific reasoning styles.
               </p>
             </div>
           )}
@@ -195,14 +195,14 @@ export function ChatPanel() {
 
       {error && (
         <div className="mx-auto mb-3 w-full max-w-4xl px-4">
-          <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+          <div className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-100">
             {error}
           </div>
         </div>
       )}
 
-      <form onSubmit={submitMessage} className="border-t border-white/10 bg-ink/70 p-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-4xl items-end gap-3 rounded-2xl border border-white/10 bg-white/[0.065] p-2 shadow-panel">
+      <form onSubmit={submitMessage} className="border-t border-line/70 bg-panel/75 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-ink/70">
+        <div className="mx-auto flex max-w-4xl items-end gap-3 rounded-2xl border border-line/80 bg-card/85 p-2 shadow-panel dark:border-white/10 dark:bg-white/[0.065]">
           <textarea
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -213,7 +213,7 @@ export function ChatPanel() {
               }
             }}
             placeholder={selectedSubjectId ? "Ask FlowDocs..." : "Select a subject first"}
-            className="min-h-12 max-h-36 flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500"
+            className="min-h-12 max-h-36 flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-6 text-foreground outline-none placeholder:text-muted dark:text-slate-100 dark:placeholder:text-slate-500"
             disabled={!selectedSubjectId || streaming}
           />
           {streaming ? (
