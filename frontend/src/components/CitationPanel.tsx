@@ -1,62 +1,58 @@
-import { ExternalLink } from "lucide-react";
-import type { Citation } from "../types";
+import { FileText, Quote } from "lucide-react";
 import { useAppStore } from "../store/app-store";
 import { ComparisonPanel } from "./ComparisonPanel";
-import { DocumentsPanel } from "./DocumentsPanel";
 
-function citationTitle(citation: Citation) {
-  return citation.section_title ?? citation.section ?? citation.filename ?? citation.document ?? "Retrieved source";
-}
-
-function citationPages(citation: Citation) {
-  if (citation.start_page && citation.end_page) return `${citation.start_page}-${citation.end_page}`;
-  if (Array.isArray(citation.pages)) return citation.pages.join(", ");
-  return citation.pages ?? citation.page ?? "Unknown";
-}
-
-function citationSnippet(citation: Citation) {
-  return citation.snippet ?? citation.text ?? "No snippet preview returned for this citation.";
+function titleFor(citation: NonNullable<ReturnType<typeof useAppStore.getState>["selectedCitation"]>) {
+  if (!citation) return "Source";
+  return citation.section_title ?? citation.section ?? citation.filename ?? "Source";
 }
 
 export function CitationPanel() {
-  const { selectedCitation, messages, setSelectedCitation } = useAppStore();
-  const citations = messages.flatMap((message) => message.citations ?? []);
+  const selectedCitation = useAppStore((state) => state.selectedCitation);
+  const setSelectedCitation = useAppStore((state) => state.setSelectedCitation);
 
   return (
-    <aside className="hidden min-h-0 flex-col gap-4 border-l border-line/70 bg-panel/65 p-4 xl:flex dark:border-white/10 dark:bg-black/20">
-      <DocumentsPanel />
-      <ComparisonPanel />
-      <section className="glass min-h-0 flex-1 rounded-xl p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground dark:text-white">Citations</h2>
-            <p className="text-xs text-muted">{citations.length} retrieved references</p>
-          </div>
-          <ExternalLink className="h-4 w-4 text-muted" />
+    <aside className="hidden min-h-0 w-[340px] flex-col overflow-y-auto border-l border-line bg-panel xl:flex">
+      <div className="border-b border-line p-4">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+          <Quote className="h-3.5 w-3.5" />
+          Citations
         </div>
-        <div className="grid max-h-[calc(100vh-39rem)] gap-2 overflow-y-auto pr-1">
-          {citations.map((citation, index) => (
-            <button
-              key={`${citationTitle(citation)}-${index}`}
-              onClick={() => setSelectedCitation(citation)}
-              className={`rounded-xl border p-3 text-left transition ${
-                selectedCitation === citation
-                  ? "border-brand/40 bg-brand/10"
-                  : "border-line/70 bg-card/75 hover:bg-subtle/40 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.07]"
-              }`}
-            >
-              <div className="text-xs font-medium text-brand">[{index + 1}] Pages {citationPages(citation)}</div>
-              <div className="mt-1 line-clamp-2 text-sm text-foreground dark:text-slate-100">{citationTitle(citation)}</div>
-              <p className="mt-2 line-clamp-3 text-xs leading-5 text-muted">{citationSnippet(citation)}</p>
-            </button>
-          ))}
-          {!citations.length && (
-            <div className="rounded-lg border border-dashed border-line/80 p-4 text-sm text-muted dark:border-white/10">
-              Citations will appear here during completed AI responses.
+        {selectedCitation ? (
+          <div className="mt-3 rounded-xl border border-line bg-card p-3">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">{titleFor(selectedCitation)}</h3>
+              <button
+                type="button"
+                className="text-xs text-muted hover:text-foreground"
+                onClick={() => setSelectedCitation(null)}
+              >
+                Clear
+              </button>
             </div>
-          )}
-        </div>
-      </section>
+            {(selectedCitation.page || selectedCitation.pages) && (
+              <p className="mt-1 text-xs text-muted">
+                Page {String(selectedCitation.page ?? selectedCitation.pages)}
+              </p>
+            )}
+            <p className="mt-3 text-sm leading-6 text-foreground">
+              {String(selectedCitation.snippet ?? selectedCitation.text ?? "No excerpt available.")}
+            </p>
+            {selectedCitation.filename && (
+              <p className="mt-2 flex items-center gap-1 text-xs text-muted">
+                <FileText className="h-3 w-3" />
+                {selectedCitation.filename}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted">Select a citation chip from chat or comparison results.</p>
+        )}
+      </div>
+
+      <div className="p-4">
+        <ComparisonPanel compact />
+      </div>
     </aside>
   );
 }

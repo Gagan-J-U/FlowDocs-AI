@@ -54,3 +54,22 @@ class User(Base):
         back_populates="user",
         cascade="all, delete"
     )
+
+    workspace_memberships = relationship(
+        "WorkspaceMember",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    research_profile = relationship(
+        "ResearchProfile",
+        uselist=False
+    )
+
+    dm_participations = relationship(
+        "DMParticipant"
+    )
+
+    dm_messages = relationship(
+        "DMMessage"
+    )

@@ -29,6 +29,10 @@ from app.services.figure_citation_service import (
     extract_figure_ids
 )
 
+from app.services.workspace_access_service import (
+    verify_workspace_access
+)
+
 
 def generate_chat_response(
 
@@ -62,22 +66,24 @@ def generate_chat_response(
         )
     if chat_type == "rag":
 
+        verify_workspace_access(
+
+            db=db,
+
+            workspace_id=workspace_id,
+
+            user_id=user_id
+        )
+
         subject = (
 
             db.query(Subject)
-
-            .join(
-                Workspace,
-                Workspace.id == Subject.workspace_id
-            )
 
             .filter(
 
                 Subject.id == subject_id,
 
-                Subject.workspace_id == workspace_id,
-
-                Workspace.user_id == user_id
+                Subject.workspace_id == workspace_id
             )
 
             .first()

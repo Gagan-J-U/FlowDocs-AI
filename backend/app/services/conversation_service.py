@@ -11,6 +11,10 @@ from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.workspace import Workspace
 
+from app.services.workspace_access_service import (
+    verify_workspace_access
+)
+
 
 def _parse_citations(raw: str | None) -> list[dict[str, Any]]:
     if not raw:
@@ -32,49 +36,68 @@ def _parse_citations(raw: str | None) -> list[dict[str, Any]]:
 
 
 def _conversation_for_user(
+
     db: Session,
+
     conversation_id: str,
+
     user_id: str
-) -> Conversation:
+):
+
     conversation = (
-        db.query(Conversation)
-        .join(Workspace, Workspace.id == Conversation.workspace_id)
-        .filter(
-            Conversation.id == conversation_id,
-            Workspace.user_id == user_id,
-            Conversation.deleted_at.is_(None)
+
+        db.query(
+            Conversation
         )
+
+        .filter(
+
+            Conversation.id
+            == conversation_id,
+
+            Conversation.deleted_at
+            .is_(None)
+        )
+
         .first()
     )
 
     if not conversation:
+
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found"
+
+            status_code=
+            status.HTTP_404_NOT_FOUND,
+
+            detail=
+            "Conversation not found"
         )
 
-    return conversation
+    verify_workspace_access(
 
+        db=db,
+
+        workspace_id=
+        conversation.workspace_id,
+
+        user_id=user_id
+    )
+
+    return conversation
 
 def list_workspace_conversations(
     db: Session,
     workspace_id: str,
     user_id: str
 ) -> list[dict[str, Any]]:
-    workspace = (
-        db.query(Workspace)
-        .filter(
-            Workspace.id == workspace_id,
-            Workspace.user_id == user_id
-        )
-        .first()
-    )
+    verify_workspace_access(
 
-    if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workspace not found"
-        )
+        db=db,
+
+        workspace_id=workspace_id,
+
+        user_id=user_id
+    )
 
     rows = (
         db.query(
@@ -109,7 +132,8 @@ def list_workspace_conversations(
             "created_at": conversation.created_at,
             "latest_message_preview": preview,
             "latest_activity": latest_activity or conversation.created_at,
-            "message_count": int(message_count or 0)
+            "message_count": int(message_count or 0),
+            "is_shared": conversation.is_shared,
         })
 
     return summaries
@@ -143,8 +167,43 @@ def get_conversation_detail(
         "created_by": conversation.created_by,
         "created_at": conversation.created_at,
         "latest_activity": aggregate.latest_activity if aggregate else None,
-        "message_count": int(aggregate.message_count or 0) if aggregate else 0
+        "message_count": int(aggregate.message_count or 0) if aggregate else 0,
+        "is_shared": conversation.is_shared,
     }
+
+
+def share_conversation(
+    db: Session,
+    conversation_id: str,
+    user_id: str,
+) -> Conversation:
+    conversation = _conversation_for_user(
+        db=db,
+        conversation_id=conversation_id,
+        user_id=user_id
+    )
+    conversation.is_shared = True
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
+
+
+def make_conversation_private(
+    db: Session,
+    conversation_id: str,
+    user_id: str,
+) -> Conversation:
+    conversation = _conversation_for_user(
+        db=db,
+        conversation_id=conversation_id,
+        user_id=user_id
+    )
+    conversation.is_shared = False
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
 
 
 def list_conversation_messages(

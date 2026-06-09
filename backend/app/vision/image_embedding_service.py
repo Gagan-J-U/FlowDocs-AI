@@ -9,24 +9,25 @@ from transformers import (
     AutoModel
 )
 
-
 MODEL_NAME = os.getenv(
-
     "IMAGE_EMBEDDING_MODEL",
-
     "google/siglip-base-patch16-224"
 )
 
 LOCAL_FILES_ONLY = (
-
     os.getenv(
         "HF_LOCAL_FILES_ONLY",
         "0"
     ) != "0"
 )
 
-_processor = None
+DEVICE = (
+    "cuda"
+    if torch.cuda.is_available()
+    else "cpu"
+)
 
+_processor = None
 _model = None
 
 
@@ -38,22 +39,19 @@ def load_model():
     if _processor is None:
 
         _processor = AutoProcessor.from_pretrained(
-
             MODEL_NAME,
-
             local_files_only=LOCAL_FILES_ONLY
         )
 
     if _model is None:
 
         _model = AutoModel.from_pretrained(
-
             MODEL_NAME,
-
             local_files_only=LOCAL_FILES_ONLY
         )
 
         _model.eval()
+        _model.to(DEVICE)
 
     return _processor, _model
 
@@ -62,34 +60,73 @@ def generate_image_embedding(
     image_path: str
 ):
 
+    embeddings = generate_image_embeddings(
+        [image_path]
+    )
+
+    return embeddings[0]
+
+
+def generate_image_embeddings(
+    image_paths: list[str],
+    batch_size: int = 16
+):
+
     processor, model = load_model()
 
-    image = Image.open(
-        image_path
-    ).convert("RGB")
+    all_embeddings = []
 
-    inputs = processor(
+    for start in range(
+        0,
+        len(image_paths),
+        batch_size
+    ):
 
-        images=image,
+        batch_paths = image_paths[
+            start:start + batch_size
+        ]
 
-        return_tensors="pt"
-    )
+        images = [
 
-    with torch.no_grad():
+            Image.open(path)
+            .convert("RGB")
 
-        outputs = model.get_image_features(
-            **inputs
+            for path in batch_paths
+        ]
+
+        inputs = processor(
+            images=images,
+            return_tensors="pt"
         )
 
-    embedding = outputs[0]
+        inputs = {
 
-    embedding = (
-        embedding /
-        embedding.norm(
-            p=2
+            k: v.to(DEVICE)
+
+            for k, v in inputs.items()
+        }
+
+        with torch.no_grad():
+
+            outputs = (
+                model.get_image_features(
+                    **inputs
+                )
+            )
+
+        outputs = (
+            outputs /
+            outputs.norm(
+                p=2,
+                dim=1,
+                keepdim=True
+            )
         )
-    )
 
-    return embedding.cpu().numpy().astype(
-        np.float32
-    )
+        all_embeddings.extend(
+            outputs.cpu()
+            .numpy()
+            .astype(np.float32)
+        )
+
+    return all_embeddings

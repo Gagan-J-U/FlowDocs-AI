@@ -2,12 +2,17 @@ import type {
   ChatResult,
   ComparisonResult,
   ConversationSummary,
+  DirectMessage,
   DocumentRecord,
   Message,
   PromptMode,
   Provider,
+  ResearchProfile,
   Subject,
   Workspace,
+  WorkspaceChatMessage,
+  WorkspaceInvitation,
+  WorkspaceMember,
 } from "../types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -149,6 +154,59 @@ export const api = {
       xhr.send(form);
     });
   },
+  dmConversations(token: string) {
+    return request<{
+      id: string;
+      other_user_id: string;
+      other_username: string;
+      latest_message: string | null;
+      latest_message_at: string | null;
+    }[]>("/dm/conversations", {}, token).then((conversations) =>
+      conversations.map((conversation) => ({
+        id: conversation.id,
+        participant_id: conversation.other_user_id,
+        participant_name: conversation.other_username,
+        last_message: conversation.latest_message ?? "",
+        last_message_at: conversation.latest_message_at ?? "",
+        unread_count: 0,
+        online: conversation.online ?? false,
+      })),
+    );
+  },
+  dmMessages(token: string, conversationId: string) {
+    return request<DirectMessage[]>(`/dm/conversations/${conversationId}/messages`, {}, token);
+  },
+  sendDmMessage(token: string, conversationId: string, content: string) {
+    return request<DirectMessage>(`/dm/conversations/${conversationId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }, token);
+  },
+  createDmConversation(token: string, userId: string) {
+    return request<{ id: string; other_user_id: string; other_username: string }>(`/dm/conversations`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }, token);
+  },
+  searchUsers(token: string, query: string) {
+    const params = new URLSearchParams({ q: query });
+    return request<{ id: string; username: string; email: string }[]>(`/users/search?${params}`, {}, token);
+  },
+  me(token: string) {
+    return request<{ id: string; username: string; email: string }>("/users/me", {}, token);
+  },
+  workspaceChatMessages(token: string, workspaceId: string) {
+    return request<WorkspaceChatMessage[]>(`/workspaces/${workspaceId}/chat`, {}, token);
+  },
+  sendWorkspaceChatMessage(token: string, workspaceId: string, content: string) {
+    return request<WorkspaceChatMessage>(`/workspaces/${workspaceId}/chat`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }, token);
+  },
+  receivedWorkspaceInvitations(token: string) {
+    return request<WorkspaceInvitation[]>(`/workspace-members/invitations/received`, {}, token);
+  },
   chat(
     token: string,
     input: {
@@ -207,5 +265,81 @@ export const api = {
     return request<{ id: string; deleted: boolean }>(`/conversations/${conversationId}`, {
       method: "DELETE",
     }, token);
+  },
+  researchProfile(token: string) {
+    return request<ResearchProfile>("/research/profile", {}, token);
+  },
+  updateResearchProfile(token: string, payload: Partial<ResearchProfile>) {
+    return request<ResearchProfile>("/research/profile", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }, token);
+  },
+  researchProfileByUser(userId: string) {
+    return request<ResearchProfile>(`/research/profile/${userId}`, {});
+  },
+  discoverResearchers(token: string, query: string, topK = 10) {
+    const params = new URLSearchParams({ query, top_k: String(topK) });
+    return request<ResearchProfile[]>(`/research/discover?${params}`, {}, token);
+  },
+  workspaceMembers(token: string, workspaceId: string) {
+    return request<WorkspaceMember[]>(`/workspace-members/${workspaceId}/members`, {}, token);
+  },
+  workspaceInvitations(token: string, workspaceId: string) {
+    return request<WorkspaceInvitation[]>(`/workspace-members/${workspaceId}/invitations`, {}, token);
+  },
+  inviteWorkspaceMember(
+    token: string,
+    workspaceId: string,
+    input: { email: string; role: string },
+  ) {
+    return request<WorkspaceInvitation>(`/workspace-members/${workspaceId}/invite`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }, token);
+  },
+  updateMemberRole(
+    token: string,
+    workspaceId: string,
+    userId: string,
+    role: string,
+  ) {
+    return request<WorkspaceMember>(`/workspace-members/${workspaceId}/members/${userId}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ role }),
+    }, token);
+  },
+  removeWorkspaceMember(token: string, workspaceId: string, userId: string) {
+    return request<{ message: string }>(`/workspace-members/${workspaceId}/members/${userId}`, {
+      method: "DELETE",
+    }, token);
+  },
+  acceptInvitation(token: string, inviteToken: string) {
+    return request<{ message: string }>("/workspace-members/accept", {
+      method: "POST",
+      body: JSON.stringify({ token: inviteToken }),
+    }, token);
+  },
+  notifications(
+    token: string
+  ) {
+    return request(
+      "/notifications",
+      {},
+      token
+    );
+  },
+  
+  markNotificationRead(
+    token: string,
+    notificationId: string
+  ) {
+    return request(
+      `/notifications/${notificationId}/read`,
+      {
+        method: "POST"
+      },
+      token
+    );
   },
 };

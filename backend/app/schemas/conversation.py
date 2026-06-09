@@ -11,6 +11,7 @@ class ConversationSummary(BaseModel):
     latest_message_preview: str | None
     latest_activity: datetime
     message_count: int
+    is_shared: bool
 
 
 class ConversationDetail(BaseModel):
@@ -22,6 +23,7 @@ class ConversationDetail(BaseModel):
     created_at: datetime
     latest_activity: datetime | None = None
     message_count: int = 0
+    is_shared: bool = False
 
     class Config:
         from_attributes = True

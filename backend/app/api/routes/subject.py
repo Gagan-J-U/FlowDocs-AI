@@ -1,7 +1,5 @@
 from fastapi import APIRouter
 from fastapi import Depends
-from fastapi import HTTPException
-from fastapi import status
 
 from sqlalchemy.orm import Session
 
@@ -10,12 +8,16 @@ from app.core.database import get_db
 from app.api.dependencies.auth import get_current_user
 
 from app.models.subject import Subject
-from app.models.workspace import Workspace
 from app.models.user import User
 
 from app.schemas.subject import (
     SubjectCreate,
     SubjectResponse
+)
+
+from app.services.workspace_access_service import (
+    list_accessible_workspaces,
+    verify_workspace_access,
 )
 
 router = APIRouter(
@@ -30,16 +32,11 @@ def create_subject(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    workspace = db.query(Workspace).filter(
-        Workspace.id == subject.workspace_id,
-        Workspace.user_id == current_user.id
-    ).first()
-
-    if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workspace not found"
-        )
+    verify_workspace_access(
+        db=db,
+        workspace_id=subject.workspace_id,
+        user_id=current_user.id,
+    )
 
     new_subject = Subject(
         name=subject.name,
@@ -60,6 +57,18 @@ def get_subjects(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return db.query(Subject).join(Workspace).filter(
-        Workspace.user_id == current_user.id
-    ).all()
+    accessible_workspaces = list_accessible_workspaces(
+        db=db,
+        user_id=current_user.id,
+    )
+    workspace_ids = [workspace.id for workspace in accessible_workspaces]
+
+    if not workspace_ids:
+        return []
+
+    return (
+        db.query(Subject)
+        .filter(Subject.workspace_id.in_(workspace_ids))
+        .order_by(Subject.created_at.desc())
+        .all()
+    )
