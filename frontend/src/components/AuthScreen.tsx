@@ -41,18 +41,17 @@ export function AuthScreen() {
         animate={{ opacity: 1, y: 0 }}
         className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-line/80 bg-panel/80 shadow-panel backdrop-blur-2xl md:grid-cols-[1.05fr_0.95fr] dark:border-white/10 dark:bg-ink/70"
       >
-        <div className="relative min-h-[520px] border-b border-line/80 p-8 md:border-b-0 md:border-r dark:border-white/10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(22,119,189,0.14),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(23,145,111,0.12),transparent_32%)] dark:bg-[radial-gradient(circle_at_25%_20%,rgba(143,211,255,0.18),transparent_32%),radial-gradient(circle_at_80%_70%,rgba(155,231,199,0.12),transparent_32%)]" />
+        <div className="relative min-h-[520px] border-b border-line p-8 md:border-b-0 md:border-r">
           <div className="relative flex h-full flex-col justify-between">
             <div>
               <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-brand/30 bg-brand/15">
                 <BrainCircuit className="h-6 w-6 text-brand" />
               </div>
-              <h1 className="mt-8 max-w-md text-4xl font-semibold tracking-normal text-foreground dark:text-white">
+              <h1 className="mt-8 max-w-md text-4xl font-semibold tracking-normal text-foreground">
                 FlowDocs AI
               </h1>
-              <p className="mt-4 max-w-md text-base leading-7 text-muted dark:text-slate-300">
-                Collaborative research workspaces with persistent AI conversations, streaming answers, and citation-aware source panels.
+              <p className="mt-4 max-w-md text-base leading-7 text-muted">
+                Collaborative document intelligence for research teams.
               </p>
             </div>
             <div className="grid gap-3 text-sm text-muted dark:text-slate-300">

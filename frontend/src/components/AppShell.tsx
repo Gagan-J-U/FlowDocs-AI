@@ -1,13 +1,26 @@
 import { useEffect, useState } from "react";
 import { Loader2, PanelLeft } from "lucide-react";
+import { BrowserRouter, useLocation } from "react-router-dom";
 import { api, isAuthError } from "../lib/api";
+import type { User } from "../store/app-store";
 import { useAppStore } from "../store/app-store";
+import { useUiStore } from "../store/ui-store";
 import { Button } from "./ui/button";
-import { ChatPanel } from "./ChatPanel";
+import { Sidebar } from "./layout/Sidebar";
 import { CitationPanel } from "./CitationPanel";
-import { Sidebar } from "./Sidebar";
+import { AppRoutes } from "../routes/AppRoutes";
 
 export function AppShell() {
+  return (
+    <BrowserRouter>
+      <AppShellInner />
+    </BrowserRouter>
+  );
+}
+
+function AppShellInner() {
+  const location = useLocation();
+  const showCitationPanel = ["/chat", "/comparisons"].some((path) => location.pathname.startsWith(path));
   const {
     token,
     selectedWorkspaceId,
@@ -18,9 +31,10 @@ export function AppShell() {
     setConversations,
     setSelectedWorkspaceId,
     setSelectedSubjectId,
+    setUser,
     resetSession,
   } = useAppStore();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { sidebarOpen, setSidebarOpen } = useUiStore();
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
@@ -30,13 +44,16 @@ export function AppShell() {
     async function loadBase() {
       setCheckingSession(true);
       try {
-        const [workspaces, subjects] = await Promise.all([
+        const [workspaces, subjects, me] = await Promise.all([
           api.workspaces(token!),
           api.subjects(token!),
+          api.me(token!),
         ]);
 
         if (cancelled) return;
 
+        const user: User = { id: me.id, username: me.username, email: me.email };
+        setUser(user);
         setWorkspaces(workspaces);
         setSubjects(subjects);
 
@@ -94,35 +111,40 @@ export function AppShell() {
 
   if (checkingSession) {
     return (
-      <div className="grid h-screen place-items-center text-foreground">
-        <div className="glass flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-muted">
+      <div className="grid h-screen place-items-center bg-ink text-foreground">
+        <div className="flex items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
           <Loader2 className="h-4 w-4 animate-spin text-brand" />
-          Checking session
+          Loading workspace
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen overflow-hidden p-2 text-foreground md:p-4">
-      <div className="glass grid h-full overflow-hidden rounded-2xl shadow-panel lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)_380px]">
-        <div className="hidden min-h-0 lg:block">
-          <Sidebar />
-        </div>
-        <div className="fixed left-3 top-3 z-40 lg:hidden">
-          <Button variant="secondary" size="icon" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar">
-            <PanelLeft className="h-4 w-4" />
-          </Button>
-        </div>
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)}>
-            <div className="h-full w-[86vw] max-w-sm" onClick={(event) => event.stopPropagation()}>
-              <Sidebar />
-            </div>
+    <div className="flex h-screen overflow-hidden bg-ink text-foreground">
+      <div className="hidden min-h-0 lg:flex">
+        <Sidebar />
+      </div>
+
+      <div className="fixed left-3 top-3 z-40 lg:hidden">
+        <Button variant="secondary" size="icon" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar">
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 bg-ink/70 lg:hidden" onClick={() => setSidebarOpen(false)}>
+          <div className="h-full w-[86vw] max-w-[280px]" onClick={(event) => event.stopPropagation()}>
+            <Sidebar />
           </div>
-        )}
-        <ChatPanel />
-        <CitationPanel />
+        </div>
+      )}
+
+      <div className="flex min-h-0 min-w-0 flex-1">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <AppRoutes />
+        </main>
+        {showCitationPanel && <CitationPanel />}
       </div>
     </div>
   );

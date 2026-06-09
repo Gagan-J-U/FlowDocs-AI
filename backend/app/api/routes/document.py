@@ -26,6 +26,10 @@ from app.services.document_ingestion_service import (
     ingest_document_by_id
 )
 
+from app.services.workspace_access_service import (
+    verify_workspace_access,
+)
+
 
 router = APIRouter(
     prefix="/documents",
@@ -59,11 +63,11 @@ def upload_document(
             detail="Subject not found"
         )
 
-    if subject.workspace.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to upload documents to this subject"
-        )
+    verify_workspace_access(
+        db=db,
+        workspace_id=subject.workspace_id,
+        user_id=current_user.id,
+    )
 
     # Create subject folder
     subject_folder = os.path.join(
@@ -105,7 +109,8 @@ def upload_document(
         file_path=file_path,
         mime_type=file.content_type,
         file_size=os.path.getsize(file_path),
-        subject_id=subject_id
+        subject_id=subject_id,
+        processing_status="processing"
     )
 
     db.add(document)
@@ -147,11 +152,11 @@ def get_subject_documents(
             detail="Subject not found"
         )
 
-    if subject.workspace.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to view documents for this subject"
-        )
+    verify_workspace_access(
+        db=db,
+        workspace_id=subject.workspace_id,
+        user_id=current_user.id,
+    )
 
     return (
         db.query(Document)

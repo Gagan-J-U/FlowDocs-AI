@@ -12,6 +12,7 @@ export default {
       colors: {
         ink: "rgb(var(--color-ink) / <alpha-value>)",
         panel: "rgb(var(--color-panel) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
         line: "rgb(var(--color-line) / <alpha-value>)",
         brand: "rgb(var(--color-brand) / <alpha-value>)",
         mint: "rgb(var(--color-mint) / <alpha-value>)",
@@ -21,8 +22,11 @@ export default {
         card: "rgb(var(--color-card) / <alpha-value>)",
       },
       boxShadow: {
-        glow: "0 22px 80px rgb(var(--color-brand) / 0.18)",
-        panel: "0 18px 70px rgb(15 23 42 / 0.18)",
+        panel: "0 1px 3px rgb(15 23 42 / 0.06), 0 4px 16px rgb(15 23 42 / 0.04)",
+        soft: "0 1px 2px rgb(15 23 42 / 0.05)",
+      },
+      transitionTimingFunction: {
+        smooth: "cubic-bezier(0.22, 1, 0.36, 1)",
       },
     },
   },

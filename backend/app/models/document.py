@@ -59,6 +59,12 @@ class Document(Base):
         default=datetime.utcnow
     )
 
+    processing_status = Column(
+        String,
+        nullable=True,
+        default="pending"
+    )
+
     subject = relationship(
         "Subject",
         back_populates="documents"

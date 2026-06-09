@@ -20,6 +20,12 @@ LOCAL_FILES_ONLY = (
     ) != "0"
 )
 
+DEVICE = (
+    "cuda"
+    if torch.cuda.is_available()
+    else "cpu"
+)
+
 _processor = None
 _model = None
 
@@ -44,6 +50,7 @@ def load_model():
         )
 
         _model.eval()
+        _model.to(DEVICE)
 
     return _processor, _model
 
@@ -51,29 +58,69 @@ def load_model():
 def generate_siglip_text_embedding(
     text: str
 ):
+    """
+    Backward-compatible wrapper.
+    Existing code will continue working.
+    """
+
+    return generate_siglip_text_embeddings(
+        [text]
+    )[0]
+
+
+def generate_siglip_text_embeddings(
+    texts: list[str],
+    batch_size: int = 32
+):
+
+    if not texts:
+        return []
 
     processor, model = load_model()
 
-    inputs = processor(
-        text=[text],
-        padding=True,
-        truncation=True,
-        return_tensors="pt"
-    )
+    all_embeddings = []
 
-    with torch.no_grad():
+    for start in range(
+        0,
+        len(texts),
+        batch_size
+    ):
 
-        embedding = model.get_text_features(
-            **inputs
+        batch_texts = texts[
+            start:start + batch_size
+        ]
+
+        inputs = processor(
+            text=batch_texts,
+            padding=True,
+            truncation=True,
+            return_tensors="pt"
         )
 
-    embedding = embedding[0]
+        inputs = {
+            key: value.to(DEVICE)
+            for key, value in inputs.items()
+        }
 
-    embedding = (
-        embedding /
-        embedding.norm(p=2)
-    )
+        with torch.no_grad():
 
-    return embedding.cpu().numpy().astype(
-        np.float32
-    )
+            outputs = model.get_text_features(
+                **inputs
+            )
+
+        outputs = (
+            outputs /
+            outputs.norm(
+                p=2,
+                dim=1,
+                keepdim=True
+            )
+        )
+
+        all_embeddings.extend(
+            outputs.cpu()
+            .numpy()
+            .astype(np.float32)
+        )
+
+    return all_embeddings

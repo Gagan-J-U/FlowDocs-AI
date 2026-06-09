@@ -1,35 +1,91 @@
 from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import Text
-from sqlalchemy import JSON
+from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
+
+from sqlalchemy.orm import relationship
+
+from datetime import datetime
 
 from app.core.database import Base
 from app.core.id_generator import generate_uuid
 
 
 class ResearchProfile(Base):
+
     __tablename__ = "research_profiles"
 
     id = Column(
         String,
         primary_key=True,
-        default=generate_uuid,
-        index=True
+        default=generate_uuid
     )
 
     user_id = Column(
         String,
         ForeignKey("users.id"),
-        unique=True
+        nullable=False,
+        unique=True,
+        index=True
     )
 
-    full_name = Column(String)
+    bio = Column(
+        Text,
+        nullable=True
+    )
 
-    bio = Column(Text)
+    institution = Column(
+        String,
+        nullable=True
+    )
 
-    institution = Column(String)
+    department = Column(
+        String,
+        nullable=True
+    )
 
-    research_interests = Column(JSON)
+    skills = Column(
+        Text,
+        nullable=True
+    )
 
-    skills = Column(JSON)
+    interests = Column(
+        Text,
+        nullable=True
+    )
+
+    github_url = Column(
+        String,
+        nullable=True
+    )
+
+    linkedin_url = Column(
+        String,
+        nullable=True
+    )
+
+    website_url = Column(
+        String,
+        nullable=True
+    )
+
+    visibility = Column(
+        String,
+        default="public"
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+    user = relationship(
+        "User"
+    )

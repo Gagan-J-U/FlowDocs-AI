@@ -22,6 +22,13 @@ from app.services.citation_service import (
     build_citation_block
 )
 
+from app.services.workspace_access_service import (
+    verify_workspace_access,
+)
+from app.rag.figure_retriever import retrieve_figures
+from app.services.figure_citation_service import extract_figure_ids
+
+
 
 def _sse(event: str, payload: dict) -> str:
     return (
@@ -94,13 +101,17 @@ def stream_persistent_chat_response(
     provider: str = "ollama",
     conversation_id: str | None = None
 ):
+    verify_workspace_access(
+        db=db,
+        workspace_id=workspace_id,
+        user_id=user_id,
+    )
+
     subject = (
         db.query(Subject)
-        .join(Workspace, Workspace.id == Subject.workspace_id)
         .filter(
             Subject.id == subject_id,
             Subject.workspace_id == workspace_id,
-            Workspace.user_id == user_id
         )
         .first()
     )
@@ -149,13 +160,8 @@ def stream_persistent_chat_response(
     db.add(user_message)
     db.commit()
 
-    yield _sse(
-        "conversation",
-        {
-            "conversation_id": conversation.id,
-            "title": conversation.title
-        }
-    )
+    
+
 
     chunks = retrieve_chunks(
         db=db,
@@ -164,18 +170,31 @@ def stream_persistent_chat_response(
         query=query,
         top_k=5
     )
+
+    figures = retrieve_figures(
+        db=db,
+        workspace_id=workspace_id,
+        subject_id=subject_id,
+        query=query,
+        top_k=5
+    )
+
     citations = build_citation_block(chunks)
 
     strategy = get_prompt_strategy(mode)
+
     prompt = strategy.build(
         query=query,
-        chunks=chunks
+        chunks=chunks,
+        figures=figures
     )
 
     llm = get_llm_provider(provider)
     answer_parts: list[str] = []
 
     partial_saved = False
+
+
 
     def save_assistant_message() -> None:
         nonlocal partial_saved
@@ -224,10 +243,27 @@ def stream_persistent_chat_response(
 
     save_assistant_message()
 
+    answer = "".join(answer_parts)
+
+    referenced_figure_ids = extract_figure_ids(
+        answer
+    )
+
+    referenced_figures = [
+        figure
+        for figure in figures
+        if figure.get("figure_id")
+        in referenced_figure_ids
+    ]
+
+    save_assistant_message()
+
     yield _sse(
         "done",
         {
             "conversation_id": conversation.id,
-            "citations": citations
+            "citations": citations,
+            "figures": figures,
+            "referenced_figures": referenced_figures
         }
     )

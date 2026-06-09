@@ -6,4 +6,11 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.message import Message
 from app.models.figure import Figure
-#from app.model.research_profiles import ResearchProfile
+from app.models.workspace_member import WorkspaceMember 
+from app.models.workspace_invitation import WorkspaceInvitation
+from app.models.research_profile import ResearchProfile
+from app.models.dm_conversation import (DMConversation)
+from app.models.dm_participant import (DMParticipant)
+from app.models.dm_message import (DMMessage)
+from app.models.workspace_message import WorkspaceMessage
+from app.models.notification import Notification

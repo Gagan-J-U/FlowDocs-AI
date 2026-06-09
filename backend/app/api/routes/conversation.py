@@ -16,6 +16,8 @@ from app.services.conversation_service import (
     get_conversation_detail,
     list_conversation_messages,
     list_workspace_conversations,
+    share_conversation as share_conversation_service,
+    make_conversation_private as make_conversation_private_service,
 )
 
 
@@ -86,4 +88,30 @@ def remove_conversation(
         db=db,
         conversation_id=conversation_id,
         user_id=current_user.id
+    )
+
+
+@router.post("/{conversation_id}/share", response_model=ConversationDetail)
+def share_conversation(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return share_conversation_service(
+        db=db,
+        conversation_id=conversation_id,
+        user_id=current_user.id,
+    )
+
+
+@router.post("/{conversation_id}/private", response_model=ConversationDetail)
+def make_conversation_private(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return make_conversation_private_service(
+        db=db,
+        conversation_id=conversation_id,
+        user_id=current_user.id,
     )

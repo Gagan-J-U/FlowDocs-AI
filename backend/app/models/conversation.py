@@ -2,6 +2,7 @@ from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
+from sqlalchemy import Boolean
 
 from sqlalchemy.orm import relationship
 
@@ -71,6 +72,12 @@ class Conversation(Base):
         DateTime,
 
         nullable=True
+    )
+
+    is_shared = Column(
+        Boolean,
+        default=False,
+        nullable=False
     )
 
     # Relationships
